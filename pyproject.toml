@@ -1,0 +1,97 @@
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[project]
+name = "where-does-language-die"
+version = "0.1.0"
+description = "Causal, component-level localization of instruction-grounding failure in Vision-Language-Action models"
+readme = "README.md"
+requires-python = ">=3.12"
+license = { text = "MIT" }
+
+# LeRobot 0.6.0 declares requires-python >=3.12, which sets the floor for the whole
+# analysis environment. The simulator environment is separate (see [sim] below and
+# src/data/README.md) because LIBERO's pins are mutually exclusive with these.
+dependencies = [
+    "torch>=2.5",
+    "torchvision>=0.20",
+    "transformers>=4.50",
+    "huggingface_hub>=0.30",
+    "safetensors>=0.4",
+    "numpy>=1.24,<3",
+    "scipy>=1.11",
+    "pandas>=2.0",
+    "matplotlib>=3.8",
+    "h5py>=3.10",
+    "pyyaml>=6.0",
+    "tqdm>=4.66",
+    "pillow>=10.0",
+]
+
+[project.optional-dependencies]
+# SmolVLA policy + LeRobot runtime. Kept separate from the base install so the
+# metric/stat tests can run without pulling the full robotics stack.
+vla = [
+    "lerobot[smolvla]>=0.6.0",
+]
+
+# Interpretability tooling. nnsight compatibility with the exact SmolVLA module
+# classes is UNVERIFIED (CLAUDE.md §12 warns not to assume) -- src/models/ uses raw
+# forward hooks, and nnsight is only a cross-check. Do not make it load-bearing.
+interp = [
+    "nnsight>=0.7.0",
+    "dictionary-learning>=0.1.0",
+]
+
+# LIBERO / robosuite / MuJoCo. NOT installable alongside the analysis deps:
+# LIBERO pins transformers==4.21.1 and numpy==1.22.4. This extra exists to document
+# the sim stack and to be installed into a SEPARATE environment on Linux. It is
+# intentionally unpinned to robosuite==1.4.0 here; the exact resolution is decided
+# when the sim env is built. Windows cannot run this at all -- MuJoCo headless
+# (MUJOCO_GL=osmesa) on Windows was closed upstream as "not planned"
+# (google-deepmind/mujoco#2164), and robosuite supports Linux/macOS only.
+sim = [
+    "robosuite>=1.4",
+    "mujoco>=3.1",
+    "bddl>=1.0.1",
+    "gym>=0.25.2",
+    "opencv-python>=4.6",
+]
+
+dev = [
+    "pytest>=8.0",
+    "pytest-cov>=5.0",
+    "ruff>=0.6",
+    "mypy>=1.11",
+]
+
+[tool.hatch.build.targets.wheel]
+packages = ["src"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+addopts = "-q --strict-markers"
+markers = [
+    "slow: requires loading real model weights (deselect with '-m \"not slow\"')",
+    "sim: requires the LIBERO/MuJoCo simulator environment (Linux only)",
+]
+
+[tool.ruff]
+line-length = 100
+target-version = "py312"
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "UP", "B"]
+
+# Typed core: CLAUDE.md §11 requires types + tests for src/interp/ and src/eval/,
+# which is where silent numerical bugs hide.
+[tool.mypy]
+python_version = "3.12"
+warn_unused_configs = true
+ignore_missing_imports = true
+
+[[tool.mypy.overrides]]
+module = ["src.interp.*", "src.eval.*", "src.models.*"]
+disallow_untyped_defs = true
+warn_return_any = true

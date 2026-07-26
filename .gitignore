@@ -1,0 +1,78 @@
+# --- Python ---
+__pycache__/
+*.py[cod]
+*.so
+.Python
+build/
+dist/
+*.egg-info/
+.eggs/
+
+# --- Environments ---
+.venv/
+.venv-*/
+venv/
+env/
+.python-version
+
+# --- Caches ---
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.ipynb_checkpoints/
+htmlcov/
+.coverage
+.coverage.*
+
+# --- Model weights & datasets (never commit; re-fetch from HF) ---
+*.safetensors
+*.ckpt
+*.pth
+*.pt
+*.bin
+*.h5
+*.hdf5
+data/
+datasets/
+LIBERO/
+third_party/
+.cache/
+hf_cache/
+
+# --- Results: large blobs are ignored, small metrics/configs are NOT ---
+# Rationale (CLAUDE.md §11): every run dumps its resolved config + metrics so a
+# result is reproducible from git alone. Cached activations are large and derived,
+# so they stay local. The negated patterns below must come after the blanket ignore.
+results/**
+!results/**/
+!results/**/config.yaml
+!results/**/metrics.json
+!results/**/summary.md
+!results/.gitkeep
+
+# Cached activations are always derived and always large.
+results/**/activations/
+results/**/cache/
+*.npy
+*.npz
+
+# --- Figures: keep final vendored figures, ignore scratch renders ---
+figures/scratch/
+
+# --- Stimulus sets ARE released artifacts: do not ignore ---
+# (src/data outputs land in stimuli/ and are intentionally tracked)
+
+# --- OS / editor ---
+.DS_Store
+Thumbs.db
+desktop.ini
+.vscode/
+.idea/
+*.swp
+
+# --- Secrets ---
+.env
+.env.*
+!.env.example
+*.key
+wandb/
