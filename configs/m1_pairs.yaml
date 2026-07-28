@@ -1,0 +1,19 @@
+# M1 -- contrastive stimulus set. Defaults for scripts/build_pairs.py.
+# Schema and validity gates: src/data/README.md
+
+suite: libero_goal
+n: 200
+out: stimuli/libero_goal_pairs_v1.jsonl
+seed: 0
+
+# States per demonstration episode, and the gap between them. Kept small so pairs spread
+# across many episodes rather than clustering within a few trajectories -- adjacent
+# timesteps are near-duplicates and would inflate n without adding independent evidence.
+max_per_demo: 2
+stride: 4
+
+# Pairs are drawn only from timesteps BEFORE the first gripper-close command. Nothing has
+# been grasped yet, so every task in the shared scene is still achievable, which is the
+# operational form of "both actions individually valid". After the grasp the trajectory
+# has committed and the alternative instruction is unreachable without regrasping.
+pre_grasp_only: true

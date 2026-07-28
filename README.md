@@ -24,6 +24,60 @@ We train nothing — all analysis is forward passes with hooks on frozen public 
 No number appears in this repo unless it was produced by a run whose resolved config is committed
 alongside it. Unrun experiments emit `TODO`/`NaN`, never plausible placeholders (CLAUDE.md §11).
 
+## Quickstart (new clone)
+
+Needs [uv](https://docs.astral.sh/uv/) and ~5 GB free (3.3 GB data + ~1.8 GB weights).
+No GPU, no admin rights, no simulator required — everything below runs on CPU.
+
+```bash
+git clone https://github.com/mzkaell/vla-where-does-language-die.git
+cd vla-where-does-language-die
+
+make setup        # .venv on Python 3.12 + deps            (~3 min)
+make test-fast    # 36 tests that need no weights/data      (~5 s)
+make data         # LIBERO-Goal demos, 3.3 GB               (~10 min)
+make smoke        # loads SmolVLA, predicts on a real state (~1 min)
+make test         # full suite incl. patching correctness   (~10 min)
+```
+
+If you do not have `uv`:
+`curl -LsSf https://astral.sh/uv/install.sh | sh` (macOS/Linux) or
+`irm https://astral.sh/uv/install.ps1 | iex` (Windows). It needs no admin rights and
+installs its own Python, so your system Python is untouched.
+
+Then reproduce the artifacts:
+
+```bash
+make pairs                                          # rebuild the 200-pair stimulus set
+make ifr CKPT=k1000dai/smolvla_libero_finetune      # M0, ~26 min on 8 CPU cores
+```
+
+`make ifr` refuses to run without `CKPT`, on purpose — see *Checkpoints* below.
+
+### Writing your own experiment
+
+The model interface is in [src/models/base.py](src/models/base.py). A patching experiment
+is three calls:
+
+```python
+from src.models.smolvla import SmolVLA
+
+model = SmolVLA.load("k1000dai/smolvla_libero_finetune")
+
+# 130 sites: {vlm,expert}.L{0..15}.{resid_pre,attn_out,mlp_out,resid_post} + final norms
+run_b = model.forward_with_cache(batch_b, sites=["vlm.L8.resid_post"])
+patched = model.patch(batch_a, patches={"vlm.L8.resid_post": run_b.occurrences("vlm.L8.resid_post")})
+```
+
+Two things to know before you trust a result:
+
+- **Always pass the same `noise` to both arms.** SmolVLA is a flow-matching policy that
+  integrates from sampled noise. `model.make_noise(batch_size)` gives a seeded tensor.
+  Without it, run-to-run variance is confounded with the effect you are measuring.
+- **Sites fire more than once.** The VLM prefix runs once; the action expert runs once per
+  denoising step (10). `cache[site]` is a list, one tensor per invocation. `single()`
+  raises on multi-occurrence sites rather than silently returning the first.
+
 ## Two environments, and why
 
 The analysis stack and the simulator stack **cannot coexist in one environment**: LIBERO pins
@@ -89,6 +143,31 @@ stimuli/      released contrastive-pair sets (tracked -- these are release artif
 tests/        unit tests for interp + metrics
 paper/        workshop draft + final figures
 ```
+
+## Checkpoints
+
+`lerobot/smolvla_base` is a **pretrained base model, not a LIBERO policy**. It declares a
+6-dim state and 6-dim action against LIBERO's 8 and 7, and has never seen these tasks. An
+instruction-following rate measured on it would describe an incompetent policy rather than
+instruction grounding, so `scripts/reproduce_ifr.py` refuses to use it without
+`--allow-base-checkpoint` (which exists only to exercise plumbing).
+
+M0 therefore needs a LIBERO-finetuned SmolVLA. Several are public; none is official, and
+**which one we use is a reproducibility claim in the paper**, so it is pinned in each run's
+`results/<run_id>/config.yaml`. Known-good schemas (2 cameras, 8-dim state, 7-dim action):
+
+| Checkpoint | Notes |
+|---|---|
+| `k1000dai/smolvla_libero_finetune` | used for the current pilot |
+| `msv6/smolvla_meta_libero` | same schema, untested here |
+| `bicmol/smolvla-libero` | channels-last shapes in config |
+
+These older checkpoints carry normalization buffers that LeRobot 0.6.0's loader drops
+(it logs `Unexpected key(s) ... normalize_inputs.buffer_observation_state`). The policy
+would then silently consume raw proprioception and emit actions in normalized units.
+`src.models.smolvla.load_norm_stats` recovers them; `model.has_norm_stats` tells you
+whether it worked. Without them the divergence readout still holds (both arms are affected
+equally) but any comparison against a demonstration action does not.
 
 ## Standing rules
 

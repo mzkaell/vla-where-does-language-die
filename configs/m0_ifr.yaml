@@ -1,0 +1,29 @@
+# M0 -- instruction-following under contradiction.
+#
+# Defaults for scripts/reproduce_ifr.py. Every run writes its FULLY RESOLVED config to
+# results/<run_id>/config.yaml (CLAUDE.md §11), so this file is a starting point, not the
+# record of what happened. Read the run's own config when interpreting a number.
+
+model: smolvla
+suite: libero_goal
+
+# REQUIRED, no default on purpose. lerobot/smolvla_base is a pretrained base model, not a
+# LIBERO policy: 6-dim state/action vs LIBERO's 8/7, and it has never seen these tasks.
+# Which finetuned checkpoint we use is a reproducibility claim -- state it explicitly.
+checkpoint: null
+
+pairs: stimuli/libero_goal_pairs_v1.jsonl
+data_root: data/libero
+device: cpu
+
+# Determinism (CLAUDE.md §11). The seed fixes both the bootstrap resampling and the
+# flow-matching noise; the latter matters more than it looks, since SmolVLA integrates
+# from sampled noise and unseeded runs differ from each other.
+seed: 0
+resamples: 10000
+
+# LIBERO stores joints(7), gripper(2) and the end-effector pose. LIBERO-finetuned VLA
+# checkpoints conventionally take an 8-dim state in this order -- confirmed against the
+# normalization buffers recovered from k1000dai/smolvla_libero_finetune, whose state mean
+# shows a plausible table height in the z slot and a symmetric gripper pair.
+state_composition: [ee_pos, ee_ori, gripper_states]

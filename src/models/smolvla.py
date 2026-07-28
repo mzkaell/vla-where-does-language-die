@@ -30,6 +30,7 @@ from __future__ import annotations
 
 import contextlib
 from collections.abc import Iterator, Mapping, Sequence
+from pathlib import Path
 from typing import Any
 
 import torch
@@ -78,13 +79,19 @@ class _Taps:
 class SmolVLA(VLAModel):
     """SmolVLA-450M (`lerobot/smolvla_base`) with activation capture and patching."""
 
-    def __init__(self, policy: Any, noise_seed: int = DEFAULT_NOISE_SEED) -> None:
+    def __init__(
+        self,
+        policy: Any,
+        noise_seed: int = DEFAULT_NOISE_SEED,
+        norm_stats: dict[str, Tensor] | None = None,
+    ) -> None:
         self.policy = policy
         self.noise_seed = noise_seed
         self.config = policy.config
         self._vwe = policy.model.vlm_with_expert
         self.num_layers: int = int(self._vwe.num_vlm_layers)
         self._taps: _Taps | None = None
+        self.norm_stats = norm_stats or {}
 
     # ------------------------------------------------------------------ load
 
@@ -103,7 +110,38 @@ class SmolVLA(VLAModel):
         policy.eval()
         for p in policy.parameters():  # we train nothing (CLAUDE.md §6)
             p.requires_grad_(False)
-        return cls(policy, noise_seed=noise_seed)
+        return cls(
+            policy,
+            noise_seed=noise_seed,
+            norm_stats=load_norm_stats(checkpoint, device=device),
+        )
+
+    # --------------------------------------------------------- normalization
+
+    @property
+    def has_norm_stats(self) -> bool:
+        return bool(self.norm_stats)
+
+    def normalize_state(self, state: Tensor) -> Tensor:
+        """Map raw proprioception into the policy's training distribution."""
+        if "state_mean" not in self.norm_stats:
+            return state
+        mean = self.norm_stats["state_mean"]
+        std = self.norm_stats["state_std"]
+        return (state.to(mean.device) - mean) / std.clamp_min(1e-6)
+
+    def unnormalize_action(self, action: Tensor) -> Tensor:
+        """Map the policy's output back into raw units.
+
+        Required before comparing a predicted action against a demonstration action:
+        otherwise the two live in different scales and any distance between them is
+        meaningless -- which would silently invalidate the directional M0 readout.
+        """
+        if "action_mean" not in self.norm_stats:
+            return action
+        mean = self.norm_stats["action_mean"]
+        std = self.norm_stats["action_std"]
+        return action.to(mean.device) * std + mean
 
     @property
     def device(self) -> torch.device:
@@ -346,6 +384,61 @@ class SmolVLA(VLAModel):
             out_emb = models[i].norm(hidden_states)
             final.append(taps.tap(f"{_TOWERS[i]}.final_norm", out_emb))
         return final, past_key_values
+
+
+# ------------------------------------------------------------ normalization stats
+
+
+_NORM_KEYS = {
+    "state_mean": "normalize_inputs.buffer_observation_state.mean",
+    "state_std": "normalize_inputs.buffer_observation_state.std",
+    "action_mean": "unnormalize_outputs.buffer_action.mean",
+    "action_std": "unnormalize_outputs.buffer_action.std",
+}
+
+
+def load_norm_stats(checkpoint: str, device: str = "cpu") -> dict[str, Tensor]:
+    """Recover the dataset normalization buffers a checkpoint was trained with.
+
+    LeRobot 0.6.0 moved normalization out of the policy and into a processor pipeline
+    built from `dataset_stats`, so loading an older finetuned checkpoint logs
+
+        Unexpected key(s) when loading model: normalize_inputs.buffer_observation_state...
+
+    and **drops the statistics on the floor**. The policy then silently consumes raw
+    proprioception and emits actions in normalized units. Both arms of a contrastive pair
+    are affected equally, so the divergence readout survives -- but any comparison against
+    a demonstration action does not, because the two would be in different scales.
+
+    Returns an empty dict when a checkpoint carries no such buffers (e.g. smolvla_base),
+    in which case normalization is a no-op and the caller is told via `has_norm_stats`.
+    """
+    try:
+        from huggingface_hub import hf_hub_download
+        from safetensors import safe_open
+    except ImportError:  # pragma: no cover
+        return {}
+
+    try:
+        path = hf_hub_download(checkpoint, "model.safetensors")
+    except Exception:
+        local = Path(checkpoint) / "model.safetensors"
+        if not local.exists():
+            return {}
+        path = str(local)
+
+    stats: dict[str, Tensor] = {}
+    try:
+        with safe_open(path, framework="pt") as f:
+            available = set(f.keys())
+            for short, full in _NORM_KEYS.items():
+                if full in available:
+                    stats[short] = f.get_tensor(full).to(device=device, dtype=torch.float32)
+    except Exception:
+        return {}
+
+    # All-or-nothing: a partial set would normalize one side and not the other.
+    return stats if len(stats) == len(_NORM_KEYS) else {}
 
 
 # ---------------------------------------------------------------- input building

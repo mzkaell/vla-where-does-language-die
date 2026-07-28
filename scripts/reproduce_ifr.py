@@ -138,6 +138,14 @@ def main() -> int:
     img_size = cfg.image_features[image_keys[0]].shape[-1]
     print(f"image keys : {image_keys}")
     print(f"state dim  : {state_dim} | action dim: {cfg.action_feature.shape[0]}")
+    print(f"norm stats : {'recovered from checkpoint' if model.has_norm_stats else 'NONE'}")
+    if not model.has_norm_stats:
+        print(
+            "       WARNING: no normalization buffers found. Inputs stay raw and outputs\n"
+            "       stay in the policy's own units, so the directional readout compares\n"
+            "       different scales and is NOT interpretable. Sensitivity still is.",
+            file=sys.stderr,
+        )
 
     # Dump the resolved config BEFORE the run (CLAUDE.md §11) so a crashed run is still
     # attributable.
@@ -155,6 +163,7 @@ def main() -> int:
         "image_keys": image_keys,
         "state_dim": int(state_dim),
         "state_composition": list(STATE_KEYS),
+        "normalization_recovered": model.has_norm_stats,
         "platform": platform.platform(),
         "torch": torch.__version__,
     }
@@ -169,13 +178,16 @@ def main() -> int:
         images = build_images(obs, image_keys, img_size)
         state = build_state(obs, state_dim)
 
+        state = model.normalize_state(state)
         batch_a = make_batch(images, state, pair["instruction_a"], model.policy, args.device)
         batch_b = make_batch(images, state, pair["instruction_b"], model.policy, args.device)
 
         # Same noise on both arms: the ONLY difference between them is the instruction.
         noise = model.make_noise(1)
-        action_a = model.predict_action(batch_a, noise=noise)
-        action_b = model.predict_action(batch_b, noise=noise)
+        # Unnormalize so predictions and the demonstration action share raw LIBERO units;
+        # the directional readout compares distances between them.
+        action_a = model.unnormalize_action(model.predict_action(batch_a, noise=noise))
+        action_b = model.unnormalize_action(model.predict_action(batch_b, noise=noise))
 
         demo_action = torch.from_numpy(
             np.asarray(obs["action"][: cfg.action_feature.shape[0]], dtype=np.float32)
