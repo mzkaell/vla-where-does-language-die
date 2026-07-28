@@ -24,35 +24,79 @@ We train nothing — all analysis is forward passes with hooks on frozen public 
 No number appears in this repo unless it was produced by a run whose resolved config is committed
 alongside it. Unrun experiments emit `TODO`/`NaN`, never plausible placeholders (CLAUDE.md §11).
 
-## Quickstart (new clone)
+## Setup for teammates
 
-Needs [uv](https://docs.astral.sh/uv/) and ~5 GB free (3.3 GB data + ~1.8 GB weights).
-No GPU, no admin rights, no simulator required — everything below runs on CPU.
+**No GPU, no admin rights, and no simulator are required.** Everything below runs on a
+laptop CPU. Budget ~5 GB of disk (3.3 GB of LIBERO demos + ~1.8 GB of model weights) and
+about 15 minutes, most of it downloading.
+
+### 1. Install uv
+
+The only prerequisite. It installs its own Python, so your system Python is untouched, and
+it needs no administrator rights.
+
+```bash
+curl -LsSf https://astral.sh/uv/install.sh | sh      # macOS / Linux
+```
+```powershell
+irm https://astral.sh/uv/install.ps1 | iex           # Windows
+```
+
+Restart your shell afterwards so `uv` is on `PATH`.
+
+### 2. Clone and set up
+
+**Windows does not ship `make`,** so use these commands directly. They are exactly what the
+Makefile runs, and they work on every platform.
 
 ```bash
 git clone https://github.com/mzkaell/vla-where-does-language-die.git
 cd vla-where-does-language-die
 
-make setup        # .venv on Python 3.12 + deps            (~3 min)
-make test-fast    # 36 tests that need no weights/data      (~5 s)
-make data         # LIBERO-Goal demos, 3.3 GB               (~10 min)
-make smoke        # loads SmolVLA, predicts on a real state (~1 min)
-make test         # full suite incl. patching correctness   (~10 min)
+uv venv --python 3.12 .venv
+uv pip install --python .venv/Scripts/python.exe -e ".[vla,dev]"     # Windows
+uv pip install --python .venv/bin/python           -e ".[vla,dev]"   # macOS / Linux
 ```
 
-If you do not have `uv`:
-`curl -LsSf https://astral.sh/uv/install.sh | sh` (macOS/Linux) or
-`irm https://astral.sh/uv/install.ps1 | iex` (Windows). It needs no admin rights and
-installs its own Python, so your system Python is untouched.
-
-Then reproduce the artifacts:
+Everything after this uses that interpreter. Substitute `.venv/bin/python` on macOS/Linux:
 
 ```bash
-make pairs                                          # rebuild the 200-pair stimulus set
-make ifr CKPT=k1000dai/smolvla_libero_finetune      # M0, ~26 min on 8 CPU cores
+.venv/Scripts/python.exe -m pytest -m "not slow" -q   # 36 tests, no weights/data  (~5 s)
+.venv/Scripts/python.exe scripts/download_data.py     # LIBERO demos, 3.3 GB      (~10 min)
+.venv/Scripts/python.exe scripts/smoke_test.py        # loads SmolVLA, predicts    (~1 min)
+.venv/Scripts/python.exe -m pytest -q                 # full suite                (~10 min)
 ```
 
-`make ifr` refuses to run without `CKPT`, on purpose — see *Checkpoints* below.
+On macOS/Linux the `make` targets are equivalent and shorter: `make setup`, `make test-fast`,
+`make data`, `make smoke`, `make test`. Run `make help` for the full list.
+
+### 3. Confirm it worked
+
+`smoke_test.py` should print a predicted action chunk shape and confirm determinism. The
+simulator half will report **SKIP** on Windows — that is expected and blocks nothing (see
+*Two environments* below).
+
+### 4. Reproduce the artifacts
+
+```bash
+.venv/Scripts/python.exe scripts/build_pairs.py --suite libero_goal --n 200
+.venv/Scripts/python.exe scripts/reproduce_ifr.py --checkpoint k1000dai/smolvla_libero_finetune
+```
+
+The second refuses to run without `--checkpoint`, on purpose — see *Checkpoints* below.
+It takes ~30 min for 200 pairs on 8 CPU cores; add `--limit 20` for a quick check first.
+
+### Troubleshooting
+
+| Symptom | Cause and fix |
+|---|---|
+| `make: command not found` | Windows has no `make`. Use the direct commands above. |
+| `No solution found when resolving dependencies` | You installed the `sae` or `nnsight` extra. They are mutually incompatible and unused; install `.[vla,dev]`. |
+| `No module named pytest` | The install step failed silently. Re-run it without `-q` and read the error. |
+| `Device 'cuda' is not available. Switching to 'cpu'` | Harmless. Everything in Phase 1 is CPU-only. |
+| `Unexpected key(s) ... normalize_inputs` | Expected. We recover those buffers ourselves; see *Checkpoints*. |
+| `no LIBERO .hdf5 files under ...` | Run `scripts/download_data.py`. Check with `--check`. |
+| Simulator check says SKIP on Windows | Expected. MuJoCo headless is Linux-only; M0–M3 do not need it. |
 
 ### Writing your own experiment
 
