@@ -35,12 +35,11 @@ OK, FAIL, SKIP = "  OK  ", " FAIL ", " SKIP "
 def check_model(checkpoint: str, data_root: Path, device: str) -> bool:
     print("\n[1] MODEL")
     try:
-        import numpy as np
         import torch
 
+        from scripts.reproduce_ifr import build_images, build_state
         from src.data.build_pairs import load_observation, load_pairs
         from src.models.smolvla import SmolVLA, make_batch
-        from scripts.reproduce_ifr import build_images, build_state
     except Exception as exc:
         print(f"[{FAIL}] imports: {exc}")
         return False

@@ -269,10 +269,11 @@ class SmolVLA(VLAModel):
         head_dim = vwe.vlm.config.text_config.head_dim
 
         for layer_idx in range(num_layers):
+            every_n = vwe.self_attn_every_n_layers
             use_self_attn = (
                 fill_kv_cache
                 or "cross" not in vwe.attention_mode
-                or (vwe.self_attn_every_n_layers > 0 and layer_idx % vwe.self_attn_every_n_layers == 0)
+                or (every_n > 0 and layer_idx % every_n == 0)
             )
 
             # resid_pre, tapped before the layer consumes it

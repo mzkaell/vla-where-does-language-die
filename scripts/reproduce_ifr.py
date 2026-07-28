@@ -24,7 +24,6 @@ import json
 import platform
 import sys
 import time
-from dataclasses import asdict
 from pathlib import Path
 
 import numpy as np
@@ -197,7 +196,10 @@ def main() -> int:
         if (i + 1) % 10 == 0 or i == len(pairs) - 1:
             rate = (i + 1) / (time.time() - t0)
             eta = (len(pairs) - i - 1) / max(rate, 1e-9)
-            print(f"  {i + 1}/{len(pairs)}  ({rate:.2f} pair/s, eta {eta / 60:.1f} min)", flush=True)
+            print(
+                f"  {i + 1}/{len(pairs)}  ({rate:.2f} pair/s, eta {eta / 60:.1f} min)",
+                flush=True,
+            )
 
     result = aggregate(outcomes, resamples=args.resamples, seed=args.seed)
 
