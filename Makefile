@@ -40,9 +40,11 @@ help:
 	@echo "  make setup-sim    LIBERO/MuJoCo env (Linux only, separate venv)"
 
 # ---------------------------------------------------------------- environment
+# The `sae` and `nnsight` extras are deliberately excluded: they are mutually
+# incompatible (dictionary-learning pins nnsight<0.4) and nothing imports them yet.
 setup:
 	$(UV) venv --python 3.12 .venv
-	$(UV) pip install --python $(PY) -e ".[vla,interp,dev]"
+	$(UV) pip install --python $(PY) -e ".[vla,dev]"
 	@echo "OK: analysis env ready. Next: make data"
 
 # The sim stack cannot coexist with the analysis stack (LIBERO pins

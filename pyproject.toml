@@ -36,12 +36,23 @@ vla = [
     "lerobot[smolvla]>=0.6.0",
 ]
 
-# Interpretability tooling. nnsight compatibility with the exact SmolVLA module
-# classes is UNVERIFIED (CLAUDE.md §12 warns not to assume) -- src/models/ uses raw
-# forward hooks, and nnsight is only a cross-check. Do not make it load-bearing.
-interp = [
-    "nnsight>=0.7.0",
-    "dictionary-learning>=0.1.0",
+# Interpretability tooling is INTENTIONALLY NOT in the default install.
+#
+# CLAUDE.md §12 says to verify nnsight against the exact SmolVLA classes rather than
+# assume it works. It does not: SmolVLMWithExpertModel.forward inlines the decoder layer
+# and never calls it as a module, so module-level tracing cannot see the residual stream.
+# src/models/smolvla.py instruments the forward pass directly instead, and nothing in the
+# codebase imports nnsight. It stays here only as an optional cross-check.
+#
+# These two also cannot be installed together: dictionary-learning pins
+# nnsight>=0.3.0,<0.4.0, which conflicts with any modern nnsight. Keeping them out of the
+# default install means a fresh clone resolves cleanly instead of dying on a stale pin for
+# tooling it does not use yet.
+sae = [
+    "dictionary-learning>=0.1.0",  # brings its own nnsight<0.4; install alone
+]
+nnsight = [
+    "nnsight>=0.7.0",  # NOT compatible with the `sae` extra
 ]
 
 # LIBERO / robosuite / MuJoCo. NOT installable alongside the analysis deps:
