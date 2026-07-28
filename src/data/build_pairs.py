@@ -377,7 +377,13 @@ def write_pairs(pairs: Sequence[ContrastivePair], out_path: Path, report: dict[s
 
     lines = [json.dumps(p.as_dict(), sort_keys=True) for p in pairs]
     body = "\n".join(lines) + "\n"
-    out_path.write_text(body, encoding="utf-8")
+
+    # newline="" suppresses Python's universal-newline translation, which on Windows
+    # would rewrite every \n as \r\n. The hash below is taken over the LF form, so
+    # without this the file on disk would not match its own recorded hash -- and the
+    # stimulus set would hash differently depending on who generated it.
+    with open(out_path, "w", encoding="utf-8", newline="") as fh:
+        fh.write(body)
 
     content_hash = hashlib.sha256(body.encode("utf-8")).hexdigest()
     manifest = {

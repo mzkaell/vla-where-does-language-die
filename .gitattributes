@@ -1,0 +1,20 @@
+# Normalize line endings to LF everywhere.
+#
+# Not cosmetic. The released stimulus set records a SHA-256 of its own contents, and
+# git's autocrlf would hand a Windows clone CRLF bytes that no longer match that hash --
+# so the same released artifact would fail its own integrity check depending on who
+# cloned it. Pinning LF keeps the bytes identical on every platform.
+* text=auto eol=lf
+
+# Released data artifacts: byte-exact, never touched.
+stimuli/** -text
+*.jsonl -text
+
+# Large binaries git should not try to diff or convert.
+*.hdf5 binary
+*.h5 binary
+*.safetensors binary
+*.npy binary
+*.npz binary
+*.png binary
+*.pdf binary

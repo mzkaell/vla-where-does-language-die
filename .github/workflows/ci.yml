@@ -1,0 +1,50 @@
+name: CI
+
+on:
+  push:
+    branches: [main, "phase*"]
+  pull_request:
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: astral-sh/setup-uv@v5
+        with:
+          enable-cache: true
+
+      - name: Install
+        # Matches `make setup`. The sae/nnsight extras are excluded on purpose:
+        # dictionary-learning pins nnsight<0.4 and the two cannot co-resolve.
+        run: |
+          uv venv --python 3.12 .venv
+          uv pip install --python .venv/bin/python -e ".[vla,dev]"
+
+      - name: Lint
+        run: .venv/bin/python -m ruff check src tests scripts
+
+      - name: Test
+        # Only the tests needing neither model weights nor the 3.3 GB of LIBERO
+        # demonstrations. The patching-correctness suite is the important one, but it
+        # downloads 1.8 GB of weights, so it runs locally rather than on every push.
+        run: .venv/bin/python -m pytest -m "not slow" -q
+
+      - name: Stimulus set is reproducible
+        # The committed pair file is a released artifact. Its schema and minimality gates
+        # are enforced by tests; this checks the file itself is well-formed and that its
+        # recorded hash matches its contents, so a hand-edit cannot slip through.
+        run: |
+          .venv/bin/python - <<'PY'
+          import hashlib, json, pathlib, sys
+          p = pathlib.Path("stimuli/libero_goal_pairs_v1.jsonl")
+          m = json.loads(p.with_suffix(".manifest.json").read_text())
+          body = p.read_bytes()
+          got = hashlib.sha256(body).hexdigest()
+          rows = [json.loads(l) for l in body.decode().splitlines() if l.strip()]
+          assert len(rows) == m["n_pairs"], f'{len(rows)} rows vs manifest {m["n_pairs"]}'
+          assert got == m["content_sha256"], "stimulus file does not match its manifest hash"
+          assert len({r["pair_id"] for r in rows}) == len(rows), "duplicate pair_id"
+          print(f'OK: {len(rows)} pairs, sha256 {got[:16]}...')
+          PY

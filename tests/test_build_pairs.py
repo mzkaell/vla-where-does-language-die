@@ -143,6 +143,61 @@ class TestPreGraspTimesteps:
         assert pre_grasp_timesteps(self._demo(actions), max_per_demo=100, stride=1) == []
 
 
+class TestWrittenArtifactIntegrity:
+    """The stimulus file must match the hash it records, on every platform."""
+
+    @staticmethod
+    def _pair(i):
+        from src.data.build_pairs import ContrastivePair
+
+        return ContrastivePair(
+            pair_id=f"p{i}",
+            family="destination_swap",
+            instruction_a="put the bowl on the plate",
+            instruction_b="put the bowl on the stove",
+            differing_span_a="plate",
+            differing_span_b="stove",
+            span_index=5,
+            source_task="t",
+            source_file="libero_goal/x.hdf5",
+            source_sha256="deadbeef",
+            demo="demo_0",
+            timestep=i,
+            provenance="test",
+        )
+
+    def test_file_matches_recorded_hash(self, tmp_path):
+        """Regression: `write_text` translates \\n to \\r\\n on Windows.
+
+        The hash is taken over the LF form, so the artifact would fail its own integrity
+        check on the platform that produced it -- and hash differently per author.
+        """
+        import hashlib
+        import json
+
+        from src.data.build_pairs import write_pairs
+
+        out = tmp_path / "pairs.jsonl"
+        pairs = [self._pair(i) for i in range(5)]
+        recorded = write_pairs(pairs, out, report={})
+
+        body = out.read_bytes()
+        assert hashlib.sha256(body).hexdigest() == recorded
+        assert b"\r\n" not in body, "CRLF leaked into a released artifact"
+
+        manifest = json.loads(out.with_suffix(".manifest.json").read_text())
+        assert manifest["content_sha256"] == recorded
+        assert manifest["n_pairs"] == 5
+
+    def test_roundtrip(self, tmp_path):
+        from src.data.build_pairs import load_pairs, write_pairs
+
+        out = tmp_path / "pairs.jsonl"
+        write_pairs([self._pair(i) for i in range(3)], out, report={})
+        loaded = load_pairs(out)
+        assert [r["pair_id"] for r in loaded] == ["p0", "p1", "p2"]
+
+
 # ------------------------------------------------------- integration on real data
 
 pytest.importorskip("h5py")
