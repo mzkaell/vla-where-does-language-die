@@ -32,10 +32,12 @@ htmlcov/
 *.bin
 *.h5
 *.hdf5
-data/
-datasets/
-LIBERO/
-third_party/
+# Leading slash matters: a bare `data/` also matches src/data/, which would silently
+# exclude the pair-generation module from the repo.
+/data/
+/datasets/
+/LIBERO/
+/third_party/
 .cache/
 hf_cache/
 
