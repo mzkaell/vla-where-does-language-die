@@ -1,17 +1,17 @@
 {
-  "content_sha256": "f4a2cf08f998999b996a77d6404efd08b5c6722fc6488d00bed8b367877e6be7",
-  "n_pairs": 200,
+  "content_sha256": "2d6fc541e9836bdf01eadfac7c090d75b960b227889218754c72f1c01f8c88a6",
+  "n_pairs": 400,
   "report": {
     "counts_by_family": {
-      "destination_swap": 160,
-      "object_swap": 40
+      "destination_swap": 320,
+      "object_swap": 80
     },
     "counts_by_swap": {
-      "bowl -> wine bottle": 40,
-      "plate -> stove": 40,
-      "the plate -> top of the cabinet": 40,
-      "the rack -> top of the cabinet": 40,
-      "the stove -> top of the cabinet": 40
+      "bowl -> wine bottle": 80,
+      "plate -> stove": 80,
+      "the plate -> top of the cabinet": 80,
+      "the rack -> top of the cabinet": 80,
+      "the stove -> top of the cabinet": 80
     },
     "instruction_pairings": [
       {
@@ -45,9 +45,129 @@
         "swap": "'the rack' -> 'top of the cabinet'"
       }
     ],
-    "produced": 200,
+    "produced": 400,
     "rejected_pairings": [
       {
+        "a": "open the middle drawer of the cabinet",
+        "b": "open the top drawer and put the bowl inside",
+        "reason": "not a single contiguous referent swap"
+      },
+      {
+        "a": "open the middle drawer of the cabinet",
+        "b": "push the plate to the front of the stove",
+        "reason": "not a single contiguous referent swap"
+      },
+      {
+        "a": "open the middle drawer of the cabinet",
+        "b": "put the bowl on the plate",
+        "reason": "not a single contiguous referent swap"
+      },
+      {
+        "a": "open the middle drawer of the cabinet",
+        "b": "put the bowl on the stove",
+        "reason": "not a single contiguous referent swap"
+      },
+      {
+        "a": "open the middle drawer of the cabinet",
+        "b": "put the bowl on top of the cabinet",
+        "reason": "not a single contiguous referent swap"
+      },
+      {
+        "a": "open the middle drawer of the cabinet",
+        "b": "put the cream cheese in the bowl",
+        "reason": "not a single contiguous referent swap"
+      },
+      {
+        "a": "open the middle drawer of the cabinet",
+        "b": "put the wine bottle on the rack",
+        "reason": "not a single contiguous referent swap"
+      },
+      {
+        "a": "open the middle drawer of the cabinet",
+        "b": "put the wine bottle on top of the cabinet",
+        "reason": "not a single contiguous referent swap"
+      },
+      {
+        "a": "open the middle drawer of the cabinet",
+        "b": "turn on the stove",
+        "reason": "not a single contiguous referent swap"
+      },
+      {
+        "a": "open the top drawer and put the bowl inside",
+        "b": "push the plate to the front of the stove",
+        "reason": "not a single contiguous referent swap"
+      },
+      {
+        "a": "open the top drawer and put the bowl inside",
+        "b": "put the bowl on the plate",
+        "reason": "not a single contiguous referent swap"
+      },
+      {
+        "a": "open the top drawer and put the bowl inside",
+        "b": "put the bowl on the stove",
+        "reason": "not a single contiguous referent swap"
+      },
+      {
+        "a": "open the top drawer and put the bowl inside",
+        "b": "put the bowl on top of the cabinet",
+        "reason": "not a single contiguous referent swap"
+      },
+      {
+        "a": "open the top drawer and put the bowl inside",
+        "b": "put the cream cheese in the bowl",
+        "reason": "not a single contiguous referent swap"
+      },
+      {
+        "a": "open the top drawer and put the bowl inside",
+        "b": "put the wine bottle on the rack",
+        "reason": "not a single contiguous referent swap"
+      },
+      {
+        "a": "open the top drawer and put the bowl inside",
+        "b": "put the wine bottle on top of the cabinet",
+        "reason": "not a single contiguous referent swap"
+      },
+      {
+        "a": "open the top drawer and put the bowl inside",
+        "b": "turn on the stove",
+        "reason": "not a single contiguous referent swap"
+      },
+      {
+        "a": "push the plate to the front of the stove",
+        "b": "put the bowl on the plate",
+        "reason": "not a single contiguous referent swap"
+      },
+      {
+        "a": "push the plate to the front of the stove",
+        "b": "put the bowl on the stove",
+        "reason": "not a single contiguous referent swap"
+      },
+      {
+        "a": "push the plate to the front of the stove",
+        "b": "put the bowl on top of the cabinet",
+        "reason": "not a single contiguous referent swap"
+      },
+      {
+        "a": "push the plate to the front of the stove",
+        "b": "put the cream cheese in the bowl",
+        "reason": "not a single contiguous referent swap"
+      },
+      {
+        "a": "push the plate to the front of the stove",
+        "b": "put the wine bottle on the rack",
+        "reason": "not a single contiguous referent swap"
+      },
+      {
+        "a": "push the plate to the front of the stove",
+        "b": "put the wine bottle on top of the cabinet",
+        "reason": "not a single contiguous referent swap"
+      },
+      {
+        "a": "push the plate to the front of the stove",
+        "b": "turn on the stove",
+        "reason": "not a single contiguous referent swap"
+      },
+      {
         "a": "put the bowl on the plate",
         "b": "put the cream cheese in the bowl",
         "reason": "not a single contiguous referent swap"
@@ -63,6 +183,11 @@
         "reason": "not a single contiguous referent swap"
       },
       {
+        "a": "put the bowl on the plate",
+        "b": "turn on the stove",
+        "reason": "not a single contiguous referent swap"
+      },
+      {
         "a": "put the bowl on the stove",
         "b": "put the cream cheese in the bowl",
         "reason": "not a single contiguous referent swap"
@@ -75,6 +200,11 @@
       {
         "a": "put the bowl on the stove",
         "b": "put the wine bottle on top of the cabinet",
+        "reason": "not a single contiguous referent swap"
+      },
+      {
+        "a": "put the bowl on the stove",
+        "b": "turn on the stove",
         "reason": "not a single contiguous referent swap"
       },
       {
@@ -88,6 +218,11 @@
         "reason": "not a single contiguous referent swap"
       },
       {
+        "a": "put the bowl on top of the cabinet",
+        "b": "turn on the stove",
+        "reason": "not a single contiguous referent swap"
+      },
+      {
         "a": "put the cream cheese in the bowl",
         "b": "put the wine bottle on the rack",
         "reason": "not a single contiguous referent swap"
@@ -95,10 +230,25 @@
       {
         "a": "put the cream cheese in the bowl",
         "b": "put the wine bottle on top of the cabinet",
+        "reason": "not a single contiguous referent swap"
+      },
+      {
+        "a": "put the cream cheese in the bowl",
+        "b": "turn on the stove",
+        "reason": "not a single contiguous referent swap"
+      },
+      {
+        "a": "put the wine bottle on the rack",
+        "b": "turn on the stove",
+        "reason": "not a single contiguous referent swap"
+      },
+      {
+        "a": "put the wine bottle on top of the cabinet",
+        "b": "turn on the stove",
         "reason": "not a single contiguous referent swap"
       }
     ],
-    "requested": 200
+    "requested": 400
   },
   "schema_version": "libero-goal-pairs/1"
 }

@@ -83,9 +83,10 @@ def score_pair(
 ) -> PairOutcome:
     """Score one pair from its two predicted action chunks.
 
-    `demo_action` is the action the demonstration took at this state, broadcast over the
-    chunk. It is the visual-prior-consistent reference. If unavailable the directional
-    readout is undefined and reported as such rather than guessed.
+    `demo_action` is the demonstrated reference trajectory: either a full chunk of shape
+    (chunk, dim) -- what it should be -- or a single (dim,) action, which is broadcast for
+    backward compatibility and is a much weaker reference. If unavailable the directional
+    readout is undefined and reported as NaN rather than guessed.
     """
     divergence = _l2(action_a, action_b)
 
@@ -100,7 +101,15 @@ def score_pair(
             source_is_a=source_is_a,
         )
 
-    ref = demo_action.reshape(1, 1, -1).expand_as(action_a)
+    if demo_action.ndim == 1:
+        ref = demo_action.reshape(1, 1, -1).expand_as(action_a)
+    else:
+        ref = demo_action.reshape(1, *demo_action.shape)
+        if ref.shape != action_a.shape:
+            raise ValueError(
+                f"demo chunk {tuple(demo_action.shape)} does not match predicted action "
+                f"{tuple(action_a.shape[1:])}"
+            )
     d_a = _l2(action_a, ref)
     d_b = _l2(action_b, ref)
 

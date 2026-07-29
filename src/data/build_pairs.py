@@ -152,6 +152,18 @@ def single_span_diff(a: str, b: str) -> tuple[int, str, str] | None:
     # preposition).
     if any(w in _PREPOSITIONS for w in span_a + span_b):
         return None
+
+    # The edit must not touch the verb. LIBERO instructions open with the action
+    # ("put", "open", "turn", "push"), so an edit starting at word 0 changes the task
+    # rather than swapping a referent within it:
+    #
+    #     put the bowl on the stove   ->   turn on the stove
+    #
+    # That reads as one clean block ("put the bowl" -> "turn") with no preposition, so
+    # every earlier gate passes it, yet the two arms command different actions entirely
+    # and share no referent to attribute an effect to.
+    if i1 == 0:
+        return None
     return i1, " ".join(span_a), " ".join(span_b)
 
 
@@ -403,12 +415,30 @@ def load_pairs(path: Path) -> list[dict[str, Any]]:
         return [json.loads(line) for line in fh if line.strip()]
 
 
-def load_observation(pair: dict[str, Any], data_root: Path) -> dict[str, np.ndarray]:
-    """Materialize the actual observation a pair refers to."""
+def load_observation(
+    pair: dict[str, Any], data_root: Path, chunk_size: int = 50
+) -> dict[str, np.ndarray]:
+    """Materialize the observation a pair refers to, plus the demonstrated action chunk.
+
+    `action_chunk` is the demonstration's next `chunk_size` actions from this timestep --
+    the trajectory the policy is being compared against. A policy predicts a whole chunk,
+    so comparing it to the single action at time t (broadcast) would measure agreement
+    with one instant rather than with the demonstrated behaviour, and would score a policy
+    that stalls as highly as one that follows through.
+
+    Short episodes are edge-padded with their final action, matching how a demonstration
+    that has finished simply stops moving.
+    """
     path = data_root / pair["source_file"]
     with h5py.File(path, "r") as f:
         demo = f["data"][pair["demo"]]
         t = pair["timestep"]
+        actions = demo["actions"]
+        end = min(t + chunk_size, actions.shape[0])
+        chunk = actions[t:end]
+        if chunk.shape[0] < chunk_size:
+            pad = np.repeat(chunk[-1:], chunk_size - chunk.shape[0], axis=0)
+            chunk = np.concatenate([chunk, pad], axis=0)
         return {
             "agentview_rgb": demo["obs"]["agentview_rgb"][t],
             "eye_in_hand_rgb": demo["obs"]["eye_in_hand_rgb"][t],
@@ -416,5 +446,6 @@ def load_observation(pair: dict[str, Any], data_root: Path) -> dict[str, np.ndar
             "gripper_states": demo["obs"]["gripper_states"][t],
             "ee_pos": demo["obs"]["ee_pos"][t],
             "ee_ori": demo["obs"]["ee_ori"][t],
-            "action": demo["actions"][t],
+            "action": actions[t],
+            "action_chunk": chunk,
         }

@@ -85,6 +85,12 @@ def main() -> int:
     ap.add_argument("--resamples", type=int, default=10_000)
     ap.add_argument("--run-id", default=None)
     ap.add_argument(
+        "--n-control",
+        type=int,
+        default=20,
+        help="pairs to also run as a same-instruction control (must diverge by exactly 0)",
+    )
+    ap.add_argument(
         "--allow-base-checkpoint",
         action="store_true",
         help="run against smolvla_base anyway (produces a meaningless IFR; for plumbing only)",
@@ -172,9 +178,10 @@ def main() -> int:
     )
 
     outcomes = []
+    control_divergences: list[float] = []
     t0 = time.time()
     for i, pair in enumerate(pairs):
-        obs = load_observation(pair, args.data_root)
+        obs = load_observation(pair, args.data_root, chunk_size=cfg.chunk_size)
         images = build_images(obs, image_keys, img_size)
         state = build_state(obs, state_dim)
 
@@ -189,9 +196,20 @@ def main() -> int:
         action_a = model.unnormalize_action(model.predict_action(batch_a, noise=noise))
         action_b = model.unnormalize_action(model.predict_action(batch_b, noise=noise))
 
+        # The demonstration's next chunk_size actions -- the trajectory actually taken
+        # from this state, not just the instantaneous action at time t.
         demo_action = torch.from_numpy(
-            np.asarray(obs["action"][: cfg.action_feature.shape[0]], dtype=np.float32)
+            np.asarray(obs["action_chunk"][:, : cfg.action_feature.shape[0]], dtype=np.float32)
         )
+
+        # Same-instruction control: rerunning arm A against itself must give exactly 0
+        # under fixed noise. Any drift here is nondeterminism leaking into the
+        # measurement, which would inflate every divergence reported below.
+        if i < args.n_control:
+            repeat_a = model.unnormalize_action(model.predict_action(batch_a, noise=noise))
+            control_divergences.append(
+                float(torch.linalg.vector_norm((action_a - repeat_a).reshape(-1)))
+            )
 
         source_is_a = pair["source_task"] in pair["instruction_a"].replace(" ", "_")
         outcomes.append(
@@ -215,9 +233,17 @@ def main() -> int:
 
     result = aggregate(outcomes, resamples=args.resamples, seed=args.seed)
 
-    (out_dir / "metrics.json").write_text(
-        json.dumps(result.as_dict(), indent=2), encoding="utf-8"
-    )
+    control = {
+        "n": len(control_divergences),
+        "max_divergence": max(control_divergences) if control_divergences else None,
+        "passed": bool(control_divergences) and max(control_divergences) == 0.0,
+    }
+
+    payload = result.as_dict() | {
+        "same_instruction_control": control,
+        "reference": "demo_action_chunk",
+    }
+    (out_dir / "metrics.json").write_text(json.dumps(payload, indent=2), encoding="utf-8")
     (out_dir / "per_pair.jsonl").write_text(
         "\n".join(json.dumps(o.as_dict()) for o in outcomes) + "\n", encoding="utf-8"
     )
@@ -226,6 +252,18 @@ def main() -> int:
     print("M0 -- instruction-following under contradiction")
     print("=" * 68)
     print(result.summary())
+    if control["n"]:
+        verdict = "PASS" if control["passed"] else "FAIL"
+        print(
+            f"same-instruction control (n={control['n']}): max divergence "
+            f"{control['max_divergence']:.3e}  [{verdict}]"
+        )
+        if not control["passed"]:
+            print(
+                "  FAIL means identical inputs produced different actions, so every\n"
+                "  divergence above is inflated by nondeterminism. Do not report these.",
+                file=sys.stderr,
+            )
     print("\nby family:")
     for fam, stats in result.by_family.items():
         s = stats["sensitivity"]

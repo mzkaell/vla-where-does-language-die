@@ -84,6 +84,18 @@ class TestSingleSpanDiff:
             is None
         )
 
+    def test_rejects_verb_change(self):
+        """Regression: a changed verb is a different task, not a swapped referent.
+
+        "put the bowl on the stove" vs "turn on the stove" diffs into the single block
+        "put the bowl" -> "turn", which contains no preposition, so every other gate
+        passes it. But the two arms command different actions and share no referent, so
+        an effect could not be attributed to anything.
+        """
+        assert (
+            single_span_diff("put the bowl on the stove", "turn on the stove") is None
+        )
+
     def test_rejects_pure_prefix(self):
         """"turn on the stove" vs "turn on the stove now" is an addition, not a swap."""
         assert single_span_diff("turn on the stove", "turn on the stove now") is None
@@ -236,6 +248,28 @@ class TestAgainstRealData:
         pairs, _ = build_pairs(tasks, n=200, seed=0)
         ids = [p.pair_id for p in pairs]
         assert len(ids) == len(set(ids))
+
+    def test_action_chunk_reference(self, tasks):
+        """The directional readout needs the demo's next N actions, not one repeated.
+
+        Comparing a 50-step prediction against a single instant would score a policy that
+        stalls as highly as one that follows the demonstrated trajectory through.
+        """
+        from pathlib import Path
+
+        from src.data.build_pairs import build_pairs, load_observation
+
+        root = Path(__file__).resolve().parents[1] / "data" / "libero"
+        pairs, _ = build_pairs(tasks, n=4, seed=0)
+        for p in pairs[:3]:
+            obs = load_observation(p.as_dict(), root, chunk_size=50)
+            chunk = obs["action_chunk"]
+            assert chunk.shape == (50, 7), f"expected (50, 7), got {chunk.shape}"
+            assert np.isfinite(chunk).all()
+            # First row must be the action at this exact timestep.
+            assert np.allclose(chunk[0], obs["action"])
+            # A real trajectory moves; a constant chunk would mean the padding logic ate it.
+            assert not np.allclose(chunk[0], chunk[-1]), "chunk is constant"
 
     def test_observations_are_loadable_and_identical_across_arms(self, tasks):
         """The two arms of a pair must share pixels exactly -- that is the whole design."""
