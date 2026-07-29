@@ -154,6 +154,39 @@ no competence gamble — plus discrete action tokens giving a genuine action len
 SmolVLA's probe surrogate. But it needs the 40GB A100 in CLAUDE.md §12 and abandons the
 single-consumer-GPU premise.
 
+## Checkpoint screen (`results/checkpoint_screen.json`)
+
+Eight public LIBERO SmolVLA checkpoints, 50 pairs each, competence ratio as above.
+
+| checkpoint | ratio | verdict |
+|---|---|---|
+| `k1000dai/smolvla_libero_scratch_80k` | 0.632 | **competent** |
+| `k1000dai/smolvla_libero_finetune` | 0.654 | **competent** |
+| `k1000dai/smolvla-libero-pick-up-...-20k` | 0.808 | not competent |
+| `bicmol/smolvla-libero` | 1.673 | worse than baseline |
+| `AustineJohnBreaker/smolvla_stratch_libero_spatial` | 1.676 | worse than baseline |
+| `xainyuxxx/my-smolvla-libero` | 1.732 | worse than baseline |
+| `msv6/smolvla_meta_libero` | 1.868 | worse than baseline |
+| `jadechoghari/smolvla-libero-ckpts` | — | fails to load (config schema drift) |
+
+**Only 2 of 8 are usable, and both are from the same uploader.** That is a real limit on
+independence: they plausibly share a training pipeline and data-preprocessing conventions,
+which is exactly the confound the standing rule exists to catch. They do differ in training
+regime — one finetunes `smolvla_base`, the other trains from scratch — so agreement between
+them is worth something, but it is a **weak replication**, not two independent sources. No
+truly independent competent SmolVLA checkpoint appears to exist publicly.
+
+The four failures are **not** an artefact of our preprocessing. Re-running two of them across
+all four image orientations leaves them at ~1.8 regardless:
+
+| | identity | vflip | hflip | rot180 |
+|---|---|---|---|---|
+| `msv6` | 1.779 | 1.963 | 2.055 | 2.061 |
+| `bicmol` | 1.821 | 1.818 | 1.820 | 1.826 |
+
+`bicmol` being flat to three decimals across orientations means the image barely influences
+its output at all. These checkpoints are broken on LIBERO-Goal, not misconfigured by us.
+
 ## Other open items
 
 1. **One usable checkpoint.** msv6 is excluded on competence, so nothing replicates yet. A
