@@ -1,4 +1,4 @@
-# M0: status — directional result retracted, rerun in progress
+# M0: object reference is not grounded; destination grounding is weak and checkpoint-dependent
 
 *Interim. Assumes you know VLAs and activation patching; assumes nothing about this
 project. Numbers live in `results/`, with each run's resolved config beside them.*
@@ -24,9 +24,9 @@ project. Numbers live in `results/`, with each run's resolved config beside them
 > policy's own bias does.
 >
 > The stimulus set is now counterbalanced 40/40 across all five pairings and both
-> checkpoints are rerunning. **All directional IFR numbers below this box are from the
-> broken set and should not be cited.** Sensitivity is unaffected: it is symmetric in the
-> two arms and never references the demonstration.
+> checkpoints have been rerun. The corrected results are below; the retracted magnitudes
+> (0.99 / 0.45) do not survive. Sensitivity was never affected: it is symmetric in the two
+> arms and never references the demonstration.
 
 ## Setup
 
@@ -56,22 +56,44 @@ Two readouts, chosen to fail differently:
   one of the two tasks; commanding the other should push the prediction away from that
   demonstrated trajectory. Chance = 0.5.
 
-## What survives
-
-**Instruction sensitivity**, which never touches the demonstration and is symmetric across
-the two arms, so neither bug reaches it. Stable across every run and both checkpoints:
+## Results (400 counterbalanced pairs, paired bootstrap, 10k resamples)
 
 | | k1000dai | msv6 |
 |---|---|---|
-| Sensitivity ‖a_A − a_B‖ (n=400) | 8.10 [7.82, 8.38] | 8.08 [7.90, 8.26] |
+| Sensitivity ‖a_A − a_B‖ | 7.87 [7.62, 8.13] | 8.08 [7.90, 8.27] |
+| IFR, **destination** (n=320) | 0.647 [0.594, 0.700] — above chance, p≈1e-4 | 0.472 [0.419, 0.525] — at chance, p=0.34 |
+| IFR, **object** (n=80) | 0.487 [0.375, 0.588] — at chance, p=0.91 | 0.500 [0.388, 0.613] — at chance, p=1.0 |
+| destination − object | **+0.159 [+0.037, +0.281]** significant | −0.028 [−0.150, +0.097] n.s. |
+| Same-instruction control | 0.0 — PASS | 0.0 — PASS |
 
-Swapping one referent moves the predicted action substantially, and reliably. That
-establishes the necessary precondition for the project — the instruction does reach the
-action — but says nothing about whether the model grounds it *correctly*. Direction is
-exactly what the retracted readout was supposed to supply.
+**Object swaps pooled across both checkpoints: 0.494 [0.419, 0.569], n=160, p=0.94.**
 
-**The same-instruction control passes at exactly 0.0.** Running one arm twice under fixed
-noise gives bit-identical actions, so no nondeterminism inflates any divergence here.
+### What replicates
+
+**Object reference is not grounded, in either checkpoint.** Both sit on 0.5, and pooled
+they give 0.494 — as close to chance as this design can measure. Meanwhile sensitivity in
+the object condition is high (6.55 and 9.11): swapping `bowl` → `wine bottle` clearly moves
+the action, just not toward the named object. This is the one result that survives both
+bugs and both checkpoints.
+
+### What does not replicate
+
+**Destination grounding.** k1000dai shows a real but modest effect (0.647, with a
+significant +0.159 advantage over object swaps); msv6 shows nothing (0.472, at chance). The
+destination-vs-object dissociation therefore holds in one checkpoint and is absent in the
+other — a far weaker claim than the retracted 0.99-vs-0.45.
+
+The likeliest explanation is checkpoint quality rather than architecture: msv6 is at chance
+on *everything*, which is what a policy that never learned to condition on language would
+look like. That would make it uninformative rather than contradictory. But it is a
+hypothesis. Distinguishing "does not ground language" from "our metric cannot see its
+grounding" needs a competence check we have not run — closed-loop success, or whether its
+predictions track the demonstration at all under the *correct* instruction.
+
+### Still standing
+
+**The same-instruction control passes at exactly 0.0** on both runs: identical inputs give
+bit-identical actions, so no nondeterminism inflates any divergence above.
 
 **The infrastructure.** 130 tap points across
 `{vlm, expert} × L0–L15 × {resid_pre, attn_out, mlp_out, resid_post}`, with patching
@@ -80,14 +102,20 @@ pinning the instrumented forward bitwise against stock LeRobot.
 
 ## What we don't know yet
 
-1. **Whether any directional effect exists at all.** Pending the counterbalanced rerun on
-   both checkpoints.
+1. **Is msv6 a competent policy?** It is at chance on everything. Until we check whether it
+   can do LIBERO at all, its disagreement with k1000dai cannot be interpreted. This is the
+   single highest-value next check and it is cheap.
 2. **The object arm rests on one pairing.** LIBERO-Goal contains exactly one object swap
    (`bowl`↔`wine bottle`). Rebuilding on all ten tasks raised it to n=80, but that adds
-   states, not referent diversity. Real breadth needs another suite.
+   states, not referent diversity. The headline result therefore generalizes over *states*,
+   not over *referents* — a third checkpoint would not fix this, but LIBERO-Object would.
 3. **Both checkpoints are unofficial.** No official LIBERO-finetuned SmolVLA exists.
 4. **Offline, not closed-loop.** These are action predictions on stored states, so "correct"
    means resembling the demonstrated trajectory, not task success.
+5. **Chance-level object IFR is a null result.** It is consistent with "no grounding", but
+   also with the metric being underpowered for object swaps at n=80. The destination
+   condition in k1000dai shows the metric *can* detect an effect at this n, which is
+   reassuring but not conclusive.
 
 ## Lesson recorded
 

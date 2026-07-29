@@ -33,17 +33,22 @@ It was exposed when a second checkpoint produced the *opposite* strongly-signifi
 on identical stimuli. The set is now counterbalanced 40/40 across all pairings and both
 checkpoints are rerunning.
 
-What holds up so far, on 400 pairs across two checkpoints:
+Corrected results, 400 counterbalanced pairs, two checkpoints:
 
 | | k1000dai | msv6 |
 |---|---|---|
-| Instruction sensitivity ‖a_A − a_B‖ | 8.10 [7.82, 8.38] | 8.08 [7.90, 8.26] |
-| Same-instruction control | 0.0 (PASS) | 0.0 (PASS) |
+| Sensitivity ‖a_A − a_B‖ | 7.87 [7.62, 8.13] | 8.08 [7.90, 8.27] |
+| IFR, destination (n=320) | 0.647 [0.594, 0.700] above chance | 0.472 [0.419, 0.525] at chance |
+| IFR, object (n=80) | 0.487 [0.375, 0.588] at chance | 0.500 [0.388, 0.613] at chance |
+| Same-instruction control | 0.0 PASS | 0.0 PASS |
 
-Swapping one referent reliably moves the predicted action, and identical inputs give
-bit-identical outputs. Sensitivity is symmetric across the arms and never references the
-demonstration, so the bug does not reach it. Whether the model grounds the swapped word
-*correctly* is exactly what the rerun will answer.
+**Replicates:** object reference is not grounded in either checkpoint — pooled
+0.494 [0.419, 0.569], n=160 — while sensitivity there stays high. The model moves
+differently when you swap `bowl` → `wine bottle`, just not toward the named object.
+
+**Does not replicate:** destination grounding. Real but modest in k1000dai, absent in msv6.
+msv6 is at chance on everything, which may mean it never learned to condition on language;
+a competence check is the next task.
 
 ## Setup for teammates
 
