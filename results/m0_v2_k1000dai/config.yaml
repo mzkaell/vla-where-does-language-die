@@ -1,0 +1,16 @@
+run_id: "m0_v2_k1000dai"
+milestone: "M0"
+args: {"model": "smolvla", "suite": "libero_goal", "checkpoint": "k1000dai/smolvla_libero_finetune", "pairs": "None", "data_root": "C:\\Users\\schma\\vla-where-does-language-die\\data\\libero", "limit": "None", "device": "cpu", "seed": "0", "resamples": "10000", "run_id": "m0_v2_k1000dai", "n_control": "20", "allow_base_checkpoint": "False"}
+checkpoint: "k1000dai/smolvla_libero_finetune"
+checkpoint_is_base_model: false
+pairs_file: "C:\\Users\\schma\\vla-where-does-language-die\\stimuli\\libero_goal_pairs_v1.jsonl"
+n_pairs: 400
+seed: 0
+resamples: 10000
+device: "cpu"
+image_keys: ["observation.images.image", "observation.images.wrist_image"]
+state_dim: 8
+state_composition: ["ee_pos", "ee_ori", "gripper_states"]
+normalization_recovered: true
+platform: "Windows-11-10.0.26200-SP0"
+torch: "2.11.0+cpu"
