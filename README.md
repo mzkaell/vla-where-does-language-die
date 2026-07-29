@@ -16,7 +16,7 @@ We train nothing — all analysis is forward passes with hooks on frozen public 
 | Milestone | What | State |
 |---|---|---|
 | M0 | Instruction-following rate under contradiction | DOES NOT REPRODUCE — see below |
-| M1 | Contrastive-pair generator + released stimulus set | 200 pairs released |
+| M1 | Contrastive-pair generator + released stimulus set | 400 pairs released |
 | M2 | Causal localization map (layer × component) | not started |
 | M3 | Binding transplant → encoding-vs-readout verdict | not started |
 | M4 | Figures + workshop draft | not started |
@@ -26,12 +26,9 @@ alongside it. Unrun experiments emit `TODO`/`NaN`, never plausible placeholders 
 
 ### M0 status — see [`paper/m0_findings.md`](paper/m0_findings.md)
 
-**A previously reported destination-vs-object dissociation has been retracted.** It came
-from a stimulus-generator bug: every pair drew its state from the A-side task only, which
-turns the directional readout into a test of instruction asymmetry rather than grounding.
-It was exposed when a second checkpoint produced the *opposite* strongly-significant result
-on identical stimuli. The set is now counterbalanced 40/40 across all pairings and both
-checkpoints are rerunning.
+**A previously reported destination-vs-object dissociation has been retracted** — it was an
+artefact of two bugs (a one-sided stimulus set and 180°-rotated input images), both now
+fixed. See the findings doc for the full account.
 
 **M0 does not reproduce.** On the one checkpoint that passes the competence gate, SmolVLA
 follows the instruction well above chance for *both* referent types:
@@ -87,7 +84,7 @@ Everything after this uses that interpreter. Substitute `.venv/bin/python` on ma
 
 ```bash
 .venv/Scripts/python.exe -m pytest -m "not slow" -q   # 36 tests, no weights/data  (~5 s)
-.venv/Scripts/python.exe scripts/download_data.py     # LIBERO demos, 3.3 GB      (~10 min)
+.venv/Scripts/python.exe scripts/download_data.py --all  # LIBERO demos, 5.9 GB   (~20 min)
 .venv/Scripts/python.exe scripts/smoke_test.py        # loads SmolVLA, predicts    (~1 min)
 .venv/Scripts/python.exe -m pytest -q                 # full suite                (~10 min)
 ```
@@ -104,12 +101,12 @@ simulator half will report **SKIP** on Windows — that is expected and blocks n
 ### 4. Reproduce the artifacts
 
 ```bash
-.venv/Scripts/python.exe scripts/build_pairs.py --suite libero_goal --n 200
+.venv/Scripts/python.exe scripts/build_pairs.py --suite libero_goal --n 400
 .venv/Scripts/python.exe scripts/reproduce_ifr.py --checkpoint k1000dai/smolvla_libero_finetune
 ```
 
 The second refuses to run without `--checkpoint`, on purpose — see *Checkpoints* below.
-It takes ~30 min for 200 pairs on 8 CPU cores; add `--limit 20` for a quick check first.
+It takes ~40 min for 400 pairs on 8 CPU cores; add `--limit 20` for a quick check first.
 
 ### Troubleshooting
 
