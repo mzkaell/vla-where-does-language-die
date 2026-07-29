@@ -1,10 +1,17 @@
 {
-  "content_sha256": "2d6fc541e9836bdf01eadfac7c090d75b960b227889218754c72f1c01f8c88a6",
+  "content_sha256": "cebff4c7b8ac0842b16e335f947b996f9155857908165cf8f8ab93fcaa27ead0",
   "n_pairs": 400,
   "report": {
     "counts_by_family": {
       "destination_swap": 320,
       "object_swap": 80
+    },
+    "counts_by_source_task": {
+      "put_the_bowl_on_the_plate": 80,
+      "put_the_bowl_on_the_stove": 80,
+      "put_the_bowl_on_top_of_the_cabinet": 120,
+      "put_the_wine_bottle_on_the_rack": 40,
+      "put_the_wine_bottle_on_top_of_the_cabinet": 80
     },
     "counts_by_swap": {
       "bowl -> wine bottle": 80,
@@ -248,7 +255,8 @@
         "reason": "not a single contiguous referent swap"
       }
     ],
-    "requested": 400
+    "requested": 400,
+    "source_is_a_fraction": 0.5
   },
   "schema_version": "libero-goal-pairs/1"
 }

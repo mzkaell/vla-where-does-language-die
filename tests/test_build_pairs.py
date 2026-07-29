@@ -215,6 +215,16 @@ class TestWrittenArtifactIntegrity:
 pytest.importorskip("h5py")
 
 
+def _group_sources(pairs):
+    """{(instruction_a, instruction_b): {source_task: count}}"""
+    import collections
+
+    out = collections.defaultdict(collections.Counter)
+    for p in pairs:
+        out[(p.instruction_a, p.instruction_b)][p.source_task] += 1
+    return out
+
+
 @pytest.mark.slow
 class TestAgainstRealData:
     """Runs only when the LIBERO HDF5s are present."""
@@ -241,6 +251,36 @@ class TestAgainstRealData:
                 f"non-minimal pair emitted: {p.instruction_a!r} vs {p.instruction_b!r}"
             )
             assert p.instruction_a != p.instruction_b
+
+    def test_states_are_counterbalanced_across_both_tasks(self, tasks):
+        """Regression, and the most consequential bug found so far.
+
+        The directional readout asks whether commanding the non-demonstrated instruction
+        moves the action away from what the demonstration did. If every state comes from
+        the A-side task, that question is only ever asked in one direction, and any
+        systematic asymmetry between the two instructions reads as a spurious above- or
+        below-chance score instead of cancelling.
+
+        The original `_pair_stream` consumed task A's states fully before starting task B.
+        Callers take far fewer pairs than one task supplies, so B was never reached and
+        100% of states came from A -- while the docstring claimed otherwise. Two
+        checkpoints produced opposite, strongly-significant directional scores off that
+        set before it was caught.
+        """
+        from src.data.build_pairs import build_pairs
+
+        pairs, report = build_pairs(tasks, n=200, seed=0)
+
+        for (a, b), sources in _group_sources(pairs).items():
+            assert len(sources) == 2, (
+                f"pairing {a!r} vs {b!r} drew states from only {list(sources)}; "
+                "the set is not counterbalanced"
+            )
+            lo, hi = sorted(sources.values())
+            assert lo / (lo + hi) > 0.3, f"pairing {a!r} vs {b!r} is lopsided: {sources}"
+
+        frac = report["source_is_a_fraction"]
+        assert 0.35 < frac < 0.65, f"A-side fraction {frac:.2f} is not balanced"
 
     def test_pair_ids_are_unique(self, tasks):
         from src.data.build_pairs import build_pairs

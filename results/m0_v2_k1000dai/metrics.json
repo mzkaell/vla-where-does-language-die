@@ -1,0 +1,73 @@
+{
+  "n": 400,
+  "sensitivity": {
+    "value": 8.095465045273304,
+    "lo": 7.821377567291259,
+    "hi": 8.378161850243806,
+    "n": 400,
+    "resamples": 10000,
+    "alpha": 0.05,
+    "excludes_zero": true
+  },
+  "directional_ifr": {
+    "value": 0.73,
+    "lo": 0.6875,
+    "hi": 0.7725,
+    "n": 400,
+    "resamples": 10000,
+    "alpha": 0.05,
+    "excludes_zero": true
+  },
+  "directional_p_vs_chance": 9.999000099990002e-05,
+  "chance_level": 0.5,
+  "by_family": {
+    "destination_swap": {
+      "n": 320,
+      "sensitivity": {
+        "value": 8.395660342648625,
+        "lo": 8.064435261897744,
+        "hi": 8.731037562303245,
+        "n": 320,
+        "resamples": 10000,
+        "alpha": 0.05,
+        "excludes_zero": true
+      },
+      "directional_ifr": {
+        "value": 0.709375,
+        "lo": 0.659375,
+        "hi": 0.759375,
+        "n": 320,
+        "resamples": 10000,
+        "alpha": 0.05,
+        "excludes_zero": true
+      }
+    },
+    "object_swap": {
+      "n": 80,
+      "sensitivity": {
+        "value": 6.894683855772018,
+        "lo": 6.537595931738616,
+        "hi": 7.268475364595652,
+        "n": 80,
+        "resamples": 10000,
+        "alpha": 0.05,
+        "excludes_zero": true
+      },
+      "directional_ifr": {
+        "value": 0.8125,
+        "lo": 0.725,
+        "hi": 0.8875,
+        "n": 80,
+        "resamples": 10000,
+        "alpha": 0.05,
+        "excludes_zero": true
+      }
+    }
+  },
+  "same_instruction_control": {
+    "n": 20,
+    "max_divergence": 0.0,
+    "passed": true
+  },
+  "reference": "demo_action_chunk"
+}

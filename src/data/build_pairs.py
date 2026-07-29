@@ -318,8 +318,20 @@ def build_pairs(
         "rejected_pairings": rejected_pairings,
         "counts_by_family": _counts(p.family for p in pairs),
         "counts_by_swap": _counts(f"{p.differing_span_a} -> {p.differing_span_b}" for p in pairs),
+        # Counterbalancing: what fraction of states came from the A-side task. Must be
+        # near 0.5. A one-sided set silently turns the directional readout into a test of
+        # instruction asymmetry, which reads as a spurious above/below-chance score.
+        "source_is_a_fraction": _source_balance(pairs),
+        "counts_by_source_task": _counts(p.source_task for p in pairs),
     }
     return pairs, report
+
+
+def _source_balance(pairs: Sequence[ContrastivePair]) -> float:
+    if not pairs:
+        return float("nan")
+    a_side = sum(1 for p in pairs if p.source_task == p.pair_id.split("__")[0])
+    return a_side / len(pairs)
 
 
 def _counts(values: Iterator[str]) -> dict[str, int]:
@@ -327,6 +339,22 @@ def _counts(values: Iterator[str]) -> dict[str, int]:
     for v in values:
         out[v] = out.get(v, 0) + 1
     return out
+
+
+def _states_from(
+    source: TaskSource,
+    max_per_demo: int,
+    stride: int,
+    rng: np.random.Generator,
+) -> Iterator[tuple[TaskSource, str, int]]:
+    """Yield (source, demo_name, timestep) for every usable pre-grasp state in a task."""
+    with h5py.File(source.path, "r") as f:
+        data = f["data"]
+        demos = sorted(data.keys(), key=lambda s: int(s.split("_")[1]))
+        for di in rng.permutation(len(demos)):
+            demo_name = demos[int(di)]
+            for t in pre_grasp_timesteps(data[demo_name], max_per_demo, stride):
+                yield source, demo_name, int(t)
 
 
 def _pair_stream(
@@ -338,46 +366,53 @@ def _pair_stream(
     stride: int,
     rng: np.random.Generator,
 ) -> Iterator[ContrastivePair]:
-    """Yield pairs for one instruction pairing, drawing states from both tasks' demos.
+    """Yield pairs for one instruction pairing, INTERLEAVING states from both tasks.
 
-    States are taken from *both* sides so the set is not biased toward scenes where A
-    happens to be the demonstrated task. A pair is symmetric: the same pixels are
-    evaluated under both instructions regardless of which demo they came from.
+    Counterbalancing is not optional here, it is the experiment. The directional readout
+    asks whether commanding the *non-demonstrated* instruction pushes the action away from
+    what the demonstration did. If every state came from task A, that question is only ever
+    asked in one direction, and any systematic asymmetry between the two instructions
+    (one being closer to the policy's default behaviour, say) shows up as a spurious
+    above- or below-chance score rather than cancelling out.
+
+    An earlier version consumed `ta` fully before starting `tb`. Since callers take far
+    fewer pairs than one task provides, `tb` was never reached and 100% of states came
+    from A. Interleaving strictly alternates, so truncation at any n stays balanced.
     """
     span_idx, span_a, span_b = diff
 
-    for source in (ta, tb):
-        with h5py.File(source.path, "r") as f:
-            data = f["data"]
-            demos = sorted(data.keys(), key=lambda s: int(s.split("_")[1]))
-            order = rng.permutation(len(demos))
-            for di in order:
-                demo_name = demos[int(di)]
-                demo = data[demo_name]
-                for t in pre_grasp_timesteps(demo, max_per_demo, stride):
-                    yield ContrastivePair(
-                        pair_id=f"{ta.name}__{tb.name}__{source.name}__{demo_name}__t{t}",
-                        family=family,
-                        instruction_a=ta.instruction,
-                        instruction_b=tb.instruction,
-                        differing_span_a=span_a,
-                        differing_span_b=span_b,
-                        span_index=span_idx,
-                        source_task=source.name,
-                        source_file=f"{source.path.parent.name}/{source.path.name}",
-                        source_sha256=source.sha256,
-                        demo=demo_name,
-                        timestep=int(t),
-                        provenance=(
-                            "state drawn from a pre-grasp timestep, so neither referent "
-                            "has been manipulated and both instructions remain achievable"
-                        ),
-                        validation={
-                            "single_referent_swap": True,
-                            "shared_scene": True,
-                            "pre_grasp": True,
-                        },
-                    )
+    streams = [_states_from(source, max_per_demo, stride, rng) for source in (ta, tb)]
+    alive = list(range(len(streams)))
+    while alive:
+        for k in list(alive):
+            try:
+                source, demo_name, t = next(streams[k])
+            except StopIteration:
+                alive.remove(k)
+                continue
+            yield ContrastivePair(
+                pair_id=f"{ta.name}__{tb.name}__{source.name}__{demo_name}__t{t}",
+                family=family,
+                instruction_a=ta.instruction,
+                instruction_b=tb.instruction,
+                differing_span_a=span_a,
+                differing_span_b=span_b,
+                span_index=span_idx,
+                source_task=source.name,
+                source_file=f"{source.path.parent.name}/{source.path.name}",
+                source_sha256=source.sha256,
+                demo=demo_name,
+                timestep=int(t),
+                provenance=(
+                    "state drawn from a pre-grasp timestep, so neither referent "
+                    "has been manipulated and both instructions remain achievable"
+                ),
+                validation={
+                    "single_referent_swap": True,
+                    "shared_scene": True,
+                    "pre_grasp": True,
+                },
+            )
 
 
 # ------------------------------------------------------------------------- writing
