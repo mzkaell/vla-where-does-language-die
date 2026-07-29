@@ -15,7 +15,7 @@ We train nothing — all analysis is forward passes with hooks on frozen public 
 
 | Milestone | What | State |
 |---|---|---|
-| M0 | Instruction-following rate under contradiction | pilot run, see below |
+| M0 | Instruction-following rate under contradiction | DOES NOT REPRODUCE — see below |
 | M1 | Contrastive-pair generator + released stimulus set | 200 pairs released |
 | M2 | Causal localization map (layer × component) | not started |
 | M3 | Binding transplant → encoding-vs-readout verdict | not started |
@@ -33,22 +33,21 @@ It was exposed when a second checkpoint produced the *opposite* strongly-signifi
 on identical stimuli. The set is now counterbalanced 40/40 across all pairings and both
 checkpoints are rerunning.
 
-Corrected results, 400 counterbalanced pairs, two checkpoints:
+**M0 does not reproduce.** On the one checkpoint that passes the competence gate, SmolVLA
+follows the instruction well above chance for *both* referent types:
 
-| | k1000dai | msv6 |
-|---|---|---|
-| Sensitivity ‖a_A − a_B‖ | 7.87 [7.62, 8.13] | 8.08 [7.90, 8.27] |
-| IFR, destination (n=320) | 0.647 [0.594, 0.700] above chance | 0.472 [0.419, 0.525] at chance |
-| IFR, object (n=80) | 0.487 [0.375, 0.588] at chance | 0.500 [0.388, 0.613] at chance |
-| Same-instruction control | 0.0 PASS | 0.0 PASS |
+| k1000dai (competence ratio 0.614) | destination (n=320) | object (n=80) | all (n=400) |
+|---|---|---|---|
+| Directional IFR (chance 0.5) | 0.725 [0.675, 0.775] | 0.825 [0.738, 0.900] | 0.745 [0.703, 0.788] |
 
-**Replicates:** object reference is not grounded in either checkpoint — pooled
-0.494 [0.419, 0.569], n=160 — while sensitivity there stays high. The model moves
-differently when you swap `bowl` → `wine bottle`, just not toward the named object.
+`msv6` is **excluded**: its competence ratio is 1.998, i.e. worse than predicting an
+unrelated trajectory, so its uniformly at-chance scores are uninformative rather than a
+contradicting replication.
 
-**Does not replicate:** destination grounding. Real but modest in k1000dai, absent in msv6.
-msv6 is at chance on everything, which may mean it never learned to condition on language;
-a competence check is the next task.
+There is no grounding failure here to localize, because **this design never created a
+contradiction**: LIBERO-Goal holds the scene fixed, and states are drawn pre-grasp
+specifically so both instructions stay achievable. So nothing in the image ever disagrees
+with either instruction. M2/M3 are on hold pending a design decision — see the findings doc.
 
 ## Setup for teammates
 

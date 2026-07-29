@@ -1,18 +1,18 @@
 {
   "n": 400,
   "sensitivity": {
-    "value": 7.867444510757923,
-    "lo": 7.61546681253612,
-    "hi": 8.131251851074397,
+    "value": 5.994300401359797,
+    "lo": 5.760351884000004,
+    "hi": 6.23271431492269,
     "n": 400,
     "resamples": 10000,
     "alpha": 0.05,
     "excludes_zero": true
   },
   "directional_ifr": {
-    "value": 0.615,
-    "lo": 0.5675,
-    "hi": 0.6625,
+    "value": 0.745,
+    "lo": 0.7025,
+    "hi": 0.7875,
     "n": 400,
     "resamples": 10000,
     "alpha": 0.05,
@@ -24,18 +24,18 @@
     "destination_swap": {
       "n": 320,
       "sensitivity": {
-        "value": 8.19579651169479,
-        "lo": 7.897144131669775,
-        "hi": 8.501817437727006,
+        "value": 6.182426299341023,
+        "lo": 5.896078513367101,
+        "hi": 6.473838891815395,
         "n": 320,
         "resamples": 10000,
         "alpha": 0.05,
         "excludes_zero": true
       },
       "directional_ifr": {
-        "value": 0.646875,
-        "lo": 0.59375,
-        "hi": 0.7,
+        "value": 0.725,
+        "lo": 0.675,
+        "hi": 0.775,
         "n": 320,
         "resamples": 10000,
         "alpha": 0.05,
@@ -45,18 +45,18 @@
     "object_swap": {
       "n": 80,
       "sensitivity": {
-        "value": 6.55403650701046,
-        "lo": 6.253129017949104,
-        "hi": 6.87071804895997,
+        "value": 5.241796809434891,
+        "lo": 4.922561272606254,
+        "hi": 5.56898577876389,
         "n": 80,
         "resamples": 10000,
         "alpha": 0.05,
         "excludes_zero": true
       },
       "directional_ifr": {
-        "value": 0.4875,
-        "lo": 0.375,
-        "hi": 0.5878124999999955,
+        "value": 0.825,
+        "lo": 0.7375,
+        "hi": 0.9,
         "n": 80,
         "resamples": 10000,
         "alpha": 0.05,
@@ -69,5 +69,10 @@
     "max_divergence": 0.0,
     "passed": true
   },
-  "reference": "demo_action_chunk"
+  "competence": {
+    "median_pred_to_demo": 4.209362030029297,
+    "note": "run scripts/check_competence.py --run <id> for the baseline-relative ratio"
+  },
+  "reference": "demo_action_chunk",
+  "image_orientation": "rot180"
 }

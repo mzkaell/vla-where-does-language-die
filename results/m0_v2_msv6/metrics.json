@@ -1,41 +1,41 @@
 {
   "n": 400,
   "sensitivity": {
-    "value": 8.084452478587627,
-    "lo": 7.904076186880469,
-    "hi": 8.265704443044962,
+    "value": 5.233698665201664,
+    "lo": 4.935119913531467,
+    "hi": 5.539047578241676,
     "n": 400,
     "resamples": 10000,
     "alpha": 0.05,
     "excludes_zero": true
   },
   "directional_ifr": {
-    "value": 0.4775,
-    "lo": 0.4275,
-    "hi": 0.5275,
+    "value": 0.48,
+    "lo": 0.4325,
+    "hi": 0.527562499999999,
     "n": 400,
     "resamples": 10000,
     "alpha": 0.05,
     "excludes_zero": true
   },
-  "directional_p_vs_chance": 0.3905609439056094,
+  "directional_p_vs_chance": 0.45225477452254775,
   "chance_level": 0.5,
   "by_family": {
     "destination_swap": {
       "n": 320,
       "sensitivity": {
-        "value": 7.8292264100164175,
-        "lo": 7.625829721055925,
-        "hi": 8.0372917328123,
+        "value": 4.882433581538498,
+        "lo": 4.556779658230953,
+        "hi": 5.21938500977587,
         "n": 320,
         "resamples": 10000,
         "alpha": 0.05,
         "excludes_zero": true
       },
       "directional_ifr": {
-        "value": 0.471875,
-        "lo": 0.41875,
-        "hi": 0.525,
+        "value": 0.484375,
+        "lo": 0.43125,
+        "hi": 0.540625,
         "n": 320,
         "resamples": 10000,
         "alpha": 0.05,
@@ -45,18 +45,18 @@
     "object_swap": {
       "n": 80,
       "sensitivity": {
-        "value": 9.105356752872467,
-        "lo": 8.847991132140159,
-        "hi": 9.371834374964237,
+        "value": 6.638758999854327,
+        "lo": 6.023929689824581,
+        "hi": 7.256378272362054,
         "n": 80,
         "resamples": 10000,
         "alpha": 0.05,
         "excludes_zero": true
       },
       "directional_ifr": {
-        "value": 0.5,
-        "lo": 0.3875,
-        "hi": 0.6125,
+        "value": 0.4625,
+        "lo": 0.35,
+        "hi": 0.575,
         "n": 80,
         "resamples": 10000,
         "alpha": 0.05,
@@ -69,5 +69,10 @@
     "max_divergence": 0.0,
     "passed": true
   },
-  "reference": "demo_action_chunk"
+  "competence": {
+    "median_pred_to_demo": 13.700309753417969,
+    "note": "run scripts/check_competence.py --run <id> for the baseline-relative ratio"
+  },
+  "reference": "demo_action_chunk",
+  "image_orientation": "rot180"
 }

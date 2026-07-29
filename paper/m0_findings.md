@@ -1,4 +1,9 @@
-# M0: object reference is not grounded; destination grounding is weak and checkpoint-dependent
+# M0 does not reproduce: SmolVLA grounds both referent types
+
+**Bottom line: on the one checkpoint that can actually do the task, instruction following is
+substantially above chance for both referent types — object swaps *better* than destination
+swaps. The instruction-grounding failure this project set out to localize does not appear in
+this design. Per CLAUDE.md §4 that changes the plan.**
 
 *Interim. Assumes you know VLAs and activation patching; assumes nothing about this
 project. Numbers live in `results/`, with each run's resolved config beside them.*
@@ -56,39 +61,62 @@ Two readouts, chosen to fail differently:
   one of the two tasks; commanding the other should push the prediction away from that
   demonstrated trajectory. Chance = 0.5.
 
-## Results (400 counterbalanced pairs, paired bootstrap, 10k resamples)
+## Competence gate comes first
 
-| | k1000dai | msv6 |
+A directional score means nothing unless the policy can do the task. Ratio is
+median ‖prediction − demonstration‖ over the distance between two *unrelated*
+demonstrations, so <1 means the prediction tracks this specific trajectory
+(`scripts/check_competence.py`).
+
+| | ratio | verdict |
 |---|---|---|
-| Sensitivity ‖a_A − a_B‖ | 7.87 [7.62, 8.13] | 8.08 [7.90, 8.27] |
-| IFR, **destination** (n=320) | 0.647 [0.594, 0.700] — above chance, p≈1e-4 | 0.472 [0.419, 0.525] — at chance, p=0.34 |
-| IFR, **object** (n=80) | 0.487 [0.375, 0.588] — at chance, p=0.91 | 0.500 [0.388, 0.613] — at chance, p=1.0 |
-| destination − object | **+0.159 [+0.037, +0.281]** significant | −0.028 [−0.150, +0.097] n.s. |
-| Same-instruction control | 0.0 — PASS | 0.0 — PASS |
+| k1000dai | **0.614** | competent — predictions track the demonstration |
+| msv6 | **1.998** | worse than an unrelated trajectory — **excluded** |
 
-**Object swaps pooled across both checkpoints: 0.494 [0.419, 0.569], n=160, p=0.94.**
+Rotating the frames 180° moved k1000dai from 0.981 to 0.614 but made msv6 *worse*
+(1.771 → 1.998), so msv6 either expects different preprocessing or is simply broken. Its
+uniformly at-chance scores are therefore uninformative, not a contradicting replication.
+**We have one usable checkpoint, so the standing rule is not yet satisfied.**
 
-### What replicates
+## Results — k1000dai only (400 counterbalanced pairs, 10k resamples)
 
-**Object reference is not grounded, in either checkpoint.** Both sit on 0.5, and pooled
-they give 0.494 — as close to chance as this design can measure. Meanwhile sensitivity in
-the object condition is high (6.55 and 9.11): swapping `bowl` → `wine bottle` clearly moves
-the action, just not toward the named object. This is the one result that survives both
-bugs and both checkpoints.
+| | destination (n=320) | object (n=80) | all (n=400) |
+|---|---|---|---|
+| Sensitivity ‖a_A − a_B‖ | 6.18 | 5.24 | 5.99 [5.76, 6.23] |
+| Directional IFR | 0.725 [0.675, 0.775] | **0.825 [0.738, 0.900]** | 0.745 [0.703, 0.788] |
+| vs chance | above, p≈1e-4 | above | above, p≈1e-4 |
+| wrong-direction rate | 27.5% | 17.5% | 25.5% |
 
-### What does not replicate
+destination − object = **−0.100 [−0.191, −0.003]**, significant. Same-instruction control
+passes at exactly 0.0.
 
-**Destination grounding.** k1000dai shows a real but modest effect (0.647, with a
-significant +0.159 advantage over object swaps); msv6 shows nothing (0.472, at chance). The
-destination-vs-object dissociation therefore holds in one checkpoint and is absent in the
-other — a far weaker claim than the retracted 0.99-vs-0.45.
+msv6, for the record (uninterpretable, incompetent): IFR 0.480 [0.433, 0.528], at chance on
+everything.
 
-The likeliest explanation is checkpoint quality rather than architecture: msv6 is at chance
-on *everything*, which is what a policy that never learned to condition on language would
-look like. That would make it uninformative rather than contradictory. But it is a
-hypothesis. Distinguishing "does not ground language" from "our metric cannot see its
-grounding" needs a competence check we have not run — closed-loop success, or whether its
-predictions track the demonstration at all under the *correct* instruction.
+### The premise does not reproduce
+
+**SmolVLA follows the instruction here.** 0.745 overall, well above chance, and objects are
+grounded *better* than destinations — the reverse of the retracted dissociation, which was
+an artefact of upside-down images plus a one-sided design.
+
+There is no "language dies" effect in this setup to localize. RQ1 asks where instruction
+identity *stops* influencing the action; in these stimuli it never stops.
+
+### Why: this design never created a contradiction
+
+Reviewing the design against CLAUDE.md §1, the gap is clear. The project is about
+instruction following **under contradiction** — where the visual prior and the instruction
+*disagree*. These stimuli never construct that disagreement:
+
+- LIBERO-Goal deliberately holds the scene fixed across tasks, so no visual prior favours
+  either instruction.
+- States are drawn **pre-grasp**, precisely so both instructions remain achievable — which
+  also guarantees nothing in the image contradicts either one.
+
+So M0 measured instruction *sensitivity and correctness* on neutral states, not grounding
+under conflict. A ~75% success rate on a neutral, unconflicted swap is roughly what a
+working policy should give. The null is a property of the stimuli, not evidence that VLAs
+ground language robustly.
 
 ### Still standing
 
@@ -100,56 +128,81 @@ bit-identical actions, so no nondeterminism inflates any divergence above.
 verified by self-patch identity plus perturbed negative controls, and an equivalence test
 pinning the instrumented forward bitwise against stock LeRobot.
 
-## What we don't know yet
+## The decision this forces
 
-1. **Is msv6 a competent policy?** It is at chance on everything. Until we check whether it
-   can do LIBERO at all, its disagreement with k1000dai cannot be interpreted. This is the
-   single highest-value next check and it is cheap.
+M0 was the gate: establish the behavioural effect before localizing it. It did not
+establish one, so **M2/M3 cannot start** — patching would localize an effect that isn't
+there. Three ways forward, cheapest first.
+
+**A. Build a real contradiction condition (CPU, ~half a day).** Keep everything and change
+the states: draw from **post-commitment** timesteps, where the demonstration is already
+executing task A, then command B. Now the visual context genuinely conflicts with the
+instruction. This directly tests CLAUDE.md's premise, reuses the whole pipeline, and needs
+no GPU. It also has a natural difficulty knob (how far into the trajectory), so grounding
+can be measured as a function of conflict strength. *Recommended.*
+
+Note this trades away one validity gate: post-grasp states are no longer states where both
+instructions are equally achievable. That is the point — but it means "correct" has to be
+redefined, since the demonstration is no longer a neutral reference.
+
+**B. Change suite.** LIBERO-Object/-Spatial vary the scene with the task, so the visual
+prior does favour one reading. Cheap, but loses the fixed-scene control that made
+LIBERO-Goal attractive, and reintroduces the visual confound the design was built to avoid.
+
+**C. Change model.** OpenVLA-7B has *official* LIBERO checkpoints — no provenance caveat,
+no competence gamble — plus discrete action tokens giving a genuine action lens instead of
+SmolVLA's probe surrogate. But it needs the 40GB A100 in CLAUDE.md §12 and abandons the
+single-consumer-GPU premise.
+
+## Other open items
+
+1. **One usable checkpoint.** msv6 is excluded on competence, so nothing replicates yet. A
+   third public checkpoint should be screened with `check_competence.py` *before* any
+   further analysis — that check costs no forward passes.
 2. **The object arm rests on one pairing.** LIBERO-Goal contains exactly one object swap
-   (`bowl`↔`wine bottle`). Rebuilding on all ten tasks raised it to n=80, but that adds
-   states, not referent diversity. The headline result therefore generalizes over *states*,
-   not over *referents* — a third checkpoint would not fix this, but LIBERO-Object would.
-3. **Both checkpoints are unofficial.** No official LIBERO-finetuned SmolVLA exists.
-4. **Offline, not closed-loop.** These are action predictions on stored states, so "correct"
-   means resembling the demonstrated trajectory, not task success.
-5. **Chance-level object IFR is a null result.** It is consistent with "no grounding", but
-   also with the metric being underpowered for object swaps at n=80. The destination
-   condition in k1000dai shows the metric *can* detect an effect at this n, which is
-   reassuring but not conclusive.
+   (`bowl`↔`wine bottle`). n=80 generalizes over *states*, not *referents*; a third
+   checkpoint would not fix that, but LIBERO-Object would.
+3. **Competence is adequate, not comfortable.** 0.614 means the prediction is meaningfully
+   closer to the right trajectory than to a random one, but this is still an unofficial
+   community checkpoint.
+4. **Offline, not closed-loop.** "Correct" means resembling the demonstrated trajectory, not
+   task success.
 
-## Lesson recorded
+## Lessons recorded
 
-Three separate stimulus-validity bugs have now been caught by inspecting generator output
-rather than by the gates themselves: two non-minimal pair types, and this counterbalancing
-failure. In each case the code looked right and the docstring asserted the property that
-was missing. The counterbalancing bug is the instructive one — it produced *clean,
-significant, plausible* numbers, and was only exposed because a second checkpoint
-disagreed in the opposite direction.
+Five bugs surfaced during M0, and the dangerous ones were not the crashes — they were the
+three that produced clean, significant, plausible numbers:
 
-Practical consequence for M2: run the replication checkpoint **before** interpreting any
-localization map, not after. A one-sided design produces heatmaps that look just as
-convincing as real ones.
+1. **Directional reference** compared a 50-step prediction against one action repeated 50
+   times.
+2. **Counterbalancing** — 100% of states came from the A-side task, turning the readout into
+   a test of instruction asymmetry. Produced a striking dissociation that was pure artefact.
+3. **Image orientation** — LIBERO stores frames under MuJoCo's OpenGL convention, so the
+   policy saw upside-down scenes and scored no better than predicting a random trajectory.
 
-## What's next
+Each was caught only by a check that *could disagree with the result*: a second checkpoint,
+a balance audit, a competence baseline. None was caught by reading the code, which looked
+correct, or the docstrings, which asserted the very properties that were missing.
 
-**Now (CPU, in progress)** — rerun both checkpoints with the corrected reference on 400
-pairs.
+**Consequence for M2:** a layer × component heatmap offers far fewer opportunities to
+visibly contradict itself than a single scalar did. The competence gate and a replication
+checkpoint have to run *before* any map is interpreted, and the permutation null over
+shuffled positions matters more than the headline effect.
 
-**Then (needs a GPU)** — M2 localization. Infrastructure is built and tested: 130 tap points
-over `{vlm, expert} × L0–L15 × {resid_pre, attn_out, mlp_out, resid_post}`, patching
-verified by self-patch identity plus perturbed negative controls. Run activation patching
-separately per family and compare pathways; patch language-token positions independently of
-vision positions (the prefix is `[image][language][state]`, so this is clean) to separate
-*never encoded* from *encoded but not read*; permutation null plus BH FDR across sites.
-130 × 400 × 2 is not viable at the ~11 s/pair we see on CPU.
+## Held, pending the decision above
 
-**After** — M3 binding transplant, targeting the object condition since that's where binding
-demonstrably fails and the destination condition supplies a working comparison. Verdict is
-*readout failure* if injecting the binding direction into the expert's input recovers ≥50%
-of the gap.
+M2 localization and M3 binding transplant are **not started and should not start** until a
+behavioural effect exists to localize.
 
-Per the standing rule, no headline claim ships until a second technique with different
-failure modes agrees.
+The infrastructure is built and tested and will apply unchanged to whichever condition
+replaces this one: 130 tap points over
+`{vlm, expert} × L0–L15 × {resid_pre, attn_out, mlp_out, resid_post}`, patching verified by
+self-patch identity plus perturbed negative controls, positions separable into
+`[image][language][state]` so language-token patching can be isolated from vision, and
+paired bootstrap / permutation / BH-FDR machinery in `src/eval/stats.py`.
+
+Cost when it does run: 130 sites × 400 pairs × 2 arms is not viable at the ~5–10 s/pair
+observed on CPU, so M2 needs a GPU.
 
 ## Reproduce
 
