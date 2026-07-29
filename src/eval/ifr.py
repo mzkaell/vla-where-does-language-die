@@ -29,7 +29,7 @@ finding, and precisely the kind of thing a single metric would hide.
 
 from __future__ import annotations
 
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from typing import Any
 
 import numpy as np
@@ -57,6 +57,9 @@ class PairOutcome:
 
     source_is_a: bool
 
+    progress: float = 0.0
+    """Conflict strength: fraction through the post-grasp phase. 0 in the pre-grasp regime."""
+
     def as_dict(self) -> dict[str, Any]:
         return {
             "pair_id": self.pair_id,
@@ -66,6 +69,7 @@ class PairOutcome:
             "dist_b_to_demo": self.dist_b_to_demo,
             "followed_instruction": self.followed_instruction,
             "source_is_a": self.source_is_a,
+            "progress": self.progress,
         }
 
 
@@ -80,6 +84,7 @@ def score_pair(
     action_b: Tensor,
     demo_action: Tensor | None,
     source_is_a: bool,
+    progress: float = 0.0,
 ) -> PairOutcome:
     """Score one pair from its two predicted action chunks.
 
@@ -99,6 +104,7 @@ def score_pair(
             dist_b_to_demo=float("nan"),
             followed_instruction=False,
             source_is_a=source_is_a,
+            progress=progress,
         )
 
     if demo_action.ndim == 1:
@@ -128,7 +134,53 @@ def score_pair(
         dist_b_to_demo=d_b,
         followed_instruction=followed,
         source_is_a=source_is_a,
+        progress=progress,
     )
+
+
+def by_conflict_strength(
+    outcomes: list[PairOutcome],
+    n_bins: int = 4,
+    resamples: int = 10_000,
+    seed: int = 0,
+) -> list[dict[str, Any]]:
+    """IFR as a function of conflict strength (post-grasp `progress`).
+
+    The payoff of the post-commitment regime. A single aggregate number cannot distinguish
+    "this policy grounds language" from "this policy grounds language until the visual prior
+    gets strong enough to override it" -- and the second is the phenomenon the project is
+    about. Bin by how far the demonstration has committed and look for a decline.
+
+    Returns [] for pre-grasp data, where `progress` is constant and the split is meaningless.
+    """
+    usable = [o for o in outcomes if np.isfinite(o.dist_a_to_demo)]
+    if not usable:
+        return []
+    progress = np.array([o.progress for o in usable])
+    if progress.max() - progress.min() < 1e-9:
+        return []  # pre-grasp regime: no conflict axis to bin along
+
+    edges = np.quantile(progress, np.linspace(0, 1, n_bins + 1))
+    edges[-1] += 1e-9
+    out: list[dict[str, Any]] = []
+    for lo, hi in zip(edges[:-1], edges[1:], strict=False):
+        sel = [o for o, p in zip(usable, progress, strict=False) if lo <= p < hi]
+        if len(sel) < 5:
+            continue
+        fol = np.array([float(o.followed_instruction) for o in sel])
+        div = np.array([o.divergence_ab for o in sel])
+        est = bootstrap_mean(fol, resamples=resamples, seed=seed)
+        out.append(
+            {
+                "progress_lo": float(lo),
+                "progress_hi": float(hi),
+                "n": len(sel),
+                "directional_ifr": est.as_dict(),
+                "sensitivity": bootstrap_mean(div, resamples=resamples, seed=seed).as_dict(),
+                "above_chance": bool(est.lo > CHANCE_LEVEL),
+            }
+        )
+    return out
 
 
 @dataclass
@@ -138,6 +190,7 @@ class IFRResult:
     directional_ifr: Estimate
     directional_p_vs_chance: float
     by_family: dict[str, dict[str, Any]]
+    by_conflict: list[dict[str, Any]] = field(default_factory=list)
 
     def as_dict(self) -> dict[str, Any]:
         return {
@@ -147,6 +200,7 @@ class IFRResult:
             "directional_p_vs_chance": self.directional_p_vs_chance,
             "chance_level": CHANCE_LEVEL,
             "by_family": self.by_family,
+            "by_conflict_strength": self.by_conflict,
         }
 
     def summary(self) -> str:
@@ -217,6 +271,7 @@ def aggregate(
         directional_ifr=directional,
         directional_p_vs_chance=p,
         by_family=by_family,
+        by_conflict=by_conflict_strength(outcomes, resamples=resamples, seed=seed),
     )
 
 

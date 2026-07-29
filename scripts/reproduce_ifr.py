@@ -236,6 +236,7 @@ def main() -> int:
                 action_b=action_b,
                 demo_action=demo_action,
                 source_is_a=source_is_a,
+                progress=float(pair.get("progress", 0.0)),
             )
         )
 
@@ -295,6 +296,22 @@ def main() -> int:
                 "  divergence above is inflated by nondeterminism. Do not report these.",
                 file=sys.stderr,
             )
+    if result.by_conflict:
+        print("\nby conflict strength (post-grasp progress; 0 = just grasped, 1 = about to place):")
+        print(f"  {'progress':<16}{'n':>5}{'IFR [95% CI]':>26}{'sensitivity':>14}")
+        for b in result.by_conflict:
+            d = b["directional_ifr"]
+            mark = "*" if b["above_chance"] else " "
+            print(
+                f"  {b['progress_lo']:.2f}-{b['progress_hi']:.2f}      {b['n']:>5}"
+                f"   {d['value']:.3f} [{d['lo']:.3f}, {d['hi']:.3f}]{mark}"
+                f"   {b['sensitivity']['value']:>10.3f}"
+            )
+        print("  * interval excludes chance (0.5)")
+        first, last = result.by_conflict[0], result.by_conflict[-1]
+        delta = last["directional_ifr"]["value"] - first["directional_ifr"]["value"]
+        print(f"  trend low->high conflict: {delta:+.3f}")
+
     print("\nby family:")
     for fam, stats in result.by_family.items():
         s = stats["sensitivity"]
