@@ -32,6 +32,17 @@ def main() -> int:
     ap.add_argument("--stride", type=int, default=4)
     ap.add_argument("--seed", type=int, default=0)
     ap.add_argument(
+        "--regime",
+        choices=["pre_grasp", "post_commitment"],
+        default="pre_grasp",
+        help=(
+            "pre_grasp: both instructions achievable, but NO visual conflict (M0 found no "
+            "grounding failure here). post_commitment: states after the grasp, where the "
+            "observation carries a prior for the demonstrated goal, so commanding the other "
+            "destination puts vision and language in opposition. Destination swaps only."
+        ),
+    )
+    ap.add_argument(
         "--no-hash",
         action="store_true",
         help="skip source file hashing (faster; not for a release build)",
@@ -53,6 +64,7 @@ def main() -> int:
         max_per_demo=args.max_per_demo,
         stride=args.stride,
         seed=args.seed,
+        regime=args.regime,
     )
 
     print(f"\nminimal instruction pairings: {len(report['instruction_pairings'])}")
@@ -68,7 +80,12 @@ def main() -> int:
     content_hash = write_pairs(pairs, out_path, report)
 
     print(f"\nproduced  : {len(pairs)} pairs (requested {args.n})")
+    print(f"regime    : {args.regime}")
     print(f"by family : {json.dumps(report['counts_by_family'])}")
+    print(f"A-side    : {report['source_is_a_fraction']:.3f}  (must be ~0.5)")
+    if report.get("progress_quartiles"):
+        q = [round(x, 3) for x in report["progress_quartiles"]]
+        print(f"progress  : quartiles {q}  (conflict strength; should span 0->1)")
     print(f"schema    : {SCHEMA_VERSION}")
     print(f"written   : {out_path}")
     print(f"sha256    : {content_hash}")

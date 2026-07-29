@@ -149,6 +149,43 @@ class TestPreGraspTimesteps:
         ts = pre_grasp_timesteps(self._demo(actions), max_per_demo=100, stride=1)
         assert ts == list(range(8))
 
+    def test_post_commitment_starts_at_grasp(self):
+        """The conflict regime must begin at the grasp, not before it."""
+        from src.data.build_pairs import post_commitment_timesteps
+
+        actions = np.zeros((40, 7))
+        actions[:, GRIPPER_ACTION_DIM] = -1.0
+        actions[10:, GRIPPER_ACTION_DIM] = 1.0  # grasp at t=10
+
+        ts = post_commitment_timesteps(self._demo(actions), max_per_demo=4, stride=1)
+        assert ts, "expected post-grasp states"
+        assert min(t for t, _ in ts) >= 10, "leaked a pre-grasp state into the conflict regime"
+
+    def test_post_commitment_spans_the_progress_range(self):
+        """Progress is the conflict-strength knob, so states must spread across it.
+
+        Regression: an earlier version took the first `max_per_demo` timesteps after the
+        grasp, so every state sat at progress ~0 (barely committed) and the knob could not
+        vary. That silently removes the independent variable the regime exists to sweep.
+        """
+        from src.data.build_pairs import post_commitment_timesteps
+
+        actions = np.zeros((110, 7))
+        actions[:, GRIPPER_ACTION_DIM] = -1.0
+        actions[10:, GRIPPER_ACTION_DIM] = 1.0
+
+        progs = [p for _, p in post_commitment_timesteps(self._demo(actions), 5, stride=1)]
+        assert min(progs) == pytest.approx(0.0, abs=0.02)
+        assert max(progs) == pytest.approx(1.0, abs=0.02)
+        assert max(progs) - min(progs) > 0.9, f"progress barely varies: {progs}"
+
+    def test_post_commitment_needs_a_grasp(self):
+        from src.data.build_pairs import post_commitment_timesteps
+
+        actions = np.zeros((20, 7))
+        actions[:, GRIPPER_ACTION_DIM] = -1.0  # never closes
+        assert post_commitment_timesteps(self._demo(actions), 4, stride=1) == []
+
     def test_immediate_close_yields_nothing(self):
         actions = np.zeros((8, 7))
         actions[:, GRIPPER_ACTION_DIM] = 1.0
@@ -281,6 +318,20 @@ class TestAgainstRealData:
 
         frac = report["source_is_a_fraction"]
         assert 0.35 < frac < 0.65, f"A-side fraction {frac:.2f} is not balanced"
+
+    def test_post_commitment_regime_excludes_object_swaps(self, tasks):
+        """With the object already held, an object swap is a different task, not a redirect.
+
+        Admitting it would make the two arms unequally satisfiable from the state, which is
+        the same class of hidden asymmetry that invalidated the first M0 run.
+        """
+        from src.data.build_pairs import build_pairs
+
+        pairs, report = build_pairs(tasks, n=120, seed=0, regime="post_commitment")
+        assert pairs
+        assert all(p.family == "destination_swap" for p in pairs)
+        assert all(p.regime == "post_commitment" for p in pairs)
+        assert report["source_is_a_fraction"] == pytest.approx(0.5, abs=0.15)
 
     def test_pair_ids_are_unique(self, tasks):
         from src.data.build_pairs import build_pairs

@@ -70,6 +70,12 @@ class ContrastivePair:
     demo: str
     timestep: int
     provenance: str
+    regime: str = "pre_grasp"
+    """`pre_grasp` (conflict-free) or `post_commitment` (vision opposes the instruction)."""
+
+    progress: float = 0.0
+    """Fraction through the post-grasp phase; the conflict-strength knob. 0 in pre_grasp."""
+
     validation: dict[str, Any] = field(default_factory=dict)
 
     def as_dict(self) -> dict[str, Any]:
@@ -237,6 +243,11 @@ def pre_grasp_timesteps(demo: h5py.Group, max_per_demo: int, stride: int) -> lis
     still achievable -- which is precisely the "both actions individually valid"
     requirement. After the grasp, the trajectory has committed and the alternative
     instruction is no longer reachable without regrasping.
+
+    NOTE: this regime is also, by construction, **conflict-free**. Nothing in the image
+    favours either instruction, which is why M0 measured ~75% instruction following and
+    found no grounding failure to localize. For the conflict regime see
+    `post_commitment_timesteps`.
     """
     actions = demo["actions"][:]
     closes = np.nonzero(actions[:, GRIPPER_ACTION_DIM] > 0)[0]
@@ -245,6 +256,63 @@ def pre_grasp_timesteps(demo: h5py.Group, max_per_demo: int, stride: int) -> lis
         return []
     candidates = list(range(0, horizon, stride))
     return candidates[:max_per_demo]
+
+
+def post_commitment_timesteps(
+    demo: h5py.Group,
+    max_per_demo: int,
+    stride: int,
+    min_progress: float = 0.0,
+    max_progress: float = 1.0,
+) -> list[tuple[int, float]]:
+    """Timesteps AFTER the grasp, where the trajectory has committed to a goal.
+
+    Returns (timestep, progress) with progress in [0, 1] measuring how far through the
+    post-grasp phase the state is. Progress is the conflict-strength knob: at 0 the robot
+    has just grasped, at 1 it is about to place.
+
+    This is the regime M0 was missing. Once the object is held and the arm is travelling
+    toward goal X, the observation itself carries a strong prior for X, so commanding Y
+    puts vision and language in genuine opposition -- the condition CLAUDE.md §1 is about.
+
+    Only valid for **destination swaps**. Mid-flight redirection to a different destination
+    is a real, achievable behaviour, so both instructions remain satisfiable from the state.
+    An object swap here is not: with the bowl already in the gripper, "put the wine bottle
+    on the cabinet" first requires putting the bowl down, which is a different task rather
+    than a redirected one. Mixing the two families in this regime would reintroduce exactly
+    the kind of hidden asymmetry that invalidated the first M0 run.
+    """
+    actions = demo["actions"][:]
+    closes = np.nonzero(actions[:, GRIPPER_ACTION_DIM] > 0)[0]
+    if not closes.size:
+        return []  # never grasped: no commitment to speak of
+
+    start = int(closes[0])
+    end = actions.shape[0]
+    span = end - start
+    if span <= 1:
+        return []
+
+    # Spread the sampled states EVENLY across the post-grasp phase rather than taking the
+    # first few. Progress is the conflict-strength variable, so a set clustered near 0
+    # (just-grasped, barely any commitment yet) cannot show how grounding varies with
+    # conflict -- which is the entire reason for this regime.
+    lo = start + min_progress * (span - 1)
+    hi = start + max_progress * (span - 1)
+    if hi < lo:
+        return []
+    targets = np.linspace(lo, hi, max_per_demo) if max_per_demo > 1 else np.array([(lo + hi) / 2])
+
+    out: list[tuple[int, float]] = []
+    seen: set[int] = set()
+    for target in targets:
+        t = int(round(target))
+        t = max(start, min(end - 1, t))
+        if t in seen:
+            continue
+        seen.add(t)
+        out.append((t, float((t - start) / (span - 1))))
+    return out
 
 
 # --------------------------------------------------------------------- construction
@@ -256,6 +324,7 @@ def build_pairs(
     max_per_demo: int = 2,
     stride: int = 4,
     seed: int = 0,
+    regime: str = "pre_grasp",
 ) -> tuple[list[ContrastivePair], dict[str, Any]]:
     """Generate validated contrastive pairs, balanced across instruction pairings.
 
@@ -281,14 +350,30 @@ def build_pairs(
                 )
                 continue
             family = classify_family(diff[1], diff[2], ta.instruction, span_index=diff[0])
+
+            # The post-commitment regime admits destination swaps only. With the object
+            # already grasped, swapping the object is not a redirection but a different
+            # task (put this down, pick that up), so the two arms would no longer be
+            # equally satisfiable from the state.
+            if regime == "post_commitment" and family != "destination_swap":
+                rejected_pairings.append(
+                    {
+                        "a": ta.instruction,
+                        "b": tb.instruction,
+                        "reason": f"{family} is not valid post-grasp (object already held)",
+                    }
+                )
+                continue
             pairings.append((ta, tb, diff, family))
 
     if not pairings:
-        raise RuntimeError("no minimal instruction pairs found among the supplied tasks")
+        raise RuntimeError(
+            f"no usable instruction pairs among the supplied tasks for regime {regime!r}"
+        )
 
     # Round-robin over pairings so no single swap dominates the stimulus set.
     pools: list[Iterator[ContrastivePair]] = [
-        _pair_stream(ta, tb, diff, family, max_per_demo, stride, rng)
+        _pair_stream(ta, tb, diff, family, max_per_demo, stride, rng, regime)
         for ta, tb, diff, family in pairings
     ]
 
@@ -304,6 +389,12 @@ def build_pairs(
                 exhausted.add(k)
 
     report = {
+        "regime": regime,
+        "progress_quartiles": (
+            [float(x) for x in np.quantile([p.progress for p in pairs], [0, 0.25, 0.5, 0.75, 1])]
+            if pairs and regime == "post_commitment"
+            else None
+        ),
         "requested": n,
         "produced": len(pairs),
         "instruction_pairings": [
@@ -346,15 +437,26 @@ def _states_from(
     max_per_demo: int,
     stride: int,
     rng: np.random.Generator,
-) -> Iterator[tuple[TaskSource, str, int]]:
-    """Yield (source, demo_name, timestep) for every usable pre-grasp state in a task."""
+    regime: str = "pre_grasp",
+) -> Iterator[tuple[TaskSource, str, int, float]]:
+    """Yield (source, demo_name, timestep, progress) for usable states in a task.
+
+    `progress` is 0.0 in the pre-grasp regime (undefined there) and the post-grasp
+    fraction in the post-commitment regime.
+    """
     with h5py.File(source.path, "r") as f:
         data = f["data"]
         demos = sorted(data.keys(), key=lambda s: int(s.split("_")[1]))
         for di in rng.permutation(len(demos)):
             demo_name = demos[int(di)]
-            for t in pre_grasp_timesteps(data[demo_name], max_per_demo, stride):
-                yield source, demo_name, int(t)
+            if regime == "pre_grasp":
+                for t in pre_grasp_timesteps(data[demo_name], max_per_demo, stride):
+                    yield source, demo_name, int(t), 0.0
+            elif regime == "post_commitment":
+                for t, prog in post_commitment_timesteps(data[demo_name], max_per_demo, stride):
+                    yield source, demo_name, int(t), prog
+            else:
+                raise ValueError(f"unknown regime {regime!r}")
 
 
 def _pair_stream(
@@ -365,6 +467,7 @@ def _pair_stream(
     max_per_demo: int,
     stride: int,
     rng: np.random.Generator,
+    regime: str = "pre_grasp",
 ) -> Iterator[ContrastivePair]:
     """Yield pairs for one instruction pairing, INTERLEAVING states from both tasks.
 
@@ -381,12 +484,12 @@ def _pair_stream(
     """
     span_idx, span_a, span_b = diff
 
-    streams = [_states_from(source, max_per_demo, stride, rng) for source in (ta, tb)]
+    streams = [_states_from(source, max_per_demo, stride, rng, regime) for source in (ta, tb)]
     alive = list(range(len(streams)))
     while alive:
         for k in list(alive):
             try:
-                source, demo_name, t = next(streams[k])
+                source, demo_name, t, progress = next(streams[k])
             except StopIteration:
                 alive.remove(k)
                 continue
@@ -403,14 +506,22 @@ def _pair_stream(
                 source_sha256=source.sha256,
                 demo=demo_name,
                 timestep=int(t),
+                regime=regime,
+                progress=progress,
                 provenance=(
-                    "state drawn from a pre-grasp timestep, so neither referent "
-                    "has been manipulated and both instructions remain achievable"
+                    "state drawn from a pre-grasp timestep, so neither referent has been "
+                    "manipulated and both instructions remain achievable -- and, by the "
+                    "same token, nothing in the image conflicts with either"
+                    if regime == "pre_grasp"
+                    else "state drawn after the grasp, so the trajectory has committed to "
+                    "the demonstrated goal and the observation carries a prior for it; "
+                    "commanding the other destination puts vision and language in conflict"
                 ),
                 validation={
                     "single_referent_swap": True,
                     "shared_scene": True,
-                    "pre_grasp": True,
+                    "pre_grasp": regime == "pre_grasp",
+                    "post_commitment": regime == "post_commitment",
                 },
             )
 
