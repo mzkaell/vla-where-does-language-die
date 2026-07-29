@@ -1,14 +1,32 @@
-# M0: SmolVLA follows *where*, not *what*
+# M0: status — directional result retracted, rerun in progress
 
 *Interim. Assumes you know VLAs and activation patching; assumes nothing about this
 project. Numbers live in `results/`, with each run's resolved config beside them.*
 
 ---
 
-## The finding in one line
-
-**Swap the destination in an instruction and the policy adapts almost perfectly. Swap the
-object and it performs at chance — while still changing its action.**
+> ## ⚠️ Retraction
+>
+> **An earlier version of this document reported a destination-vs-object dissociation
+> (destination IFR 0.99, object 0.45). That result is withdrawn — it came from a bug in
+> the stimulus generator, not from the model.**
+>
+> Every pair drew its state from the **A-side task only**; the generator consumed task A's
+> states fully before reaching task B, and callers never took enough pairs to get there.
+> That turns the directional readout into a test of instruction asymmetry rather than of
+> grounding, because the question "does commanding the *other* instruction move the action
+> away from the demonstration" was only ever asked in one direction.
+>
+> The symptom that exposed it: after fixing a separate reference bug, the two checkpoints
+> returned **opposite** and strongly significant scores on identical stimuli — 0.73 above
+> chance vs 0.33 below chance, p ≈ 1e-4. A real model property does not invert between
+> checkpoints while staying that significant; a one-sided design interacting with each
+> policy's own bias does.
+>
+> The stimulus set is now counterbalanced 40/40 across all five pairings and both
+> checkpoints are rerunning. **All directional IFR numbers below this box are from the
+> broken set and should not be cited.** Sensitivity is unaffected: it is symmetric in the
+> two arms and never references the demonstration.
 
 ## Setup
 
@@ -38,51 +56,51 @@ Two readouts, chosen to fail differently:
   one of the two tasks; commanding the other should push the prediction away from that
   demonstrated trajectory. Chance = 0.5.
 
-## Results (n=200, paired bootstrap, 10k resamples)
+## What survives
 
-| | Destination (n=160) | Object (n=40) |
+**Instruction sensitivity**, which never touches the demonstration and is symmetric across
+the two arms, so neither bug reaches it. Stable across every run and both checkpoints:
+
+| | k1000dai | msv6 |
 |---|---|---|
-| Sensitivity | 8.29 [7.85, 8.73] | 6.72 [6.30, 7.21] |
-| Directional IFR | **0.994 [0.98, 1.00]** | **0.45 [0.30, 0.60]** |
+| Sensitivity ‖a_A − a_B‖ (n=400) | 8.10 [7.82, 8.38] | 8.08 [7.90, 8.26] |
 
-Aggregate IFR is 0.885 [0.84, 0.93], but it's dominated by the 160 destination pairs and
-misleads on its own. The result is the split.
+Swapping one referent moves the predicted action substantially, and reliably. That
+establishes the necessary precondition for the project — the instruction does reach the
+action — but says nothing about whether the model grounds it *correctly*. Direction is
+exactly what the retracted readout was supposed to supply.
 
-## Why it matters
+**The same-instruction control passes at exactly 0.0.** Running one arm twice under fixed
+noise gives bit-identical actions, so no nondeterminism inflates any divergence here.
 
-The object condition is **not** the model ignoring language — sensitivity is high there.
-It registers the lexical change and then moves in a way unrelated to the new referent.
-That's a *binding* failure, not an attention failure, and it's exactly what this project
-set out to localize.
-
-It also arrives in a more tractable form than a single failure rate: a **within-model
-dissociation**. Same network, same scene, same measurement — one referent type works, the
-other doesn't. M2 therefore gets a built-in control. Instead of asking "where does
-instruction information live," we can trace the working destination pathway against the
-failing object pathway through the same 130 tap points and find where they diverge.
-
-The direction is consistent with the binding-ID literature: a destination may be
-recoverable as a fairly direct goal-location signal, whereas resolving which of several
-visible objects a noun denotes needs an object↔word binding — the operation CLAUDE.md §3
-predicts the action expert fails to read.
+**The infrastructure.** 130 tap points across
+`{vlm, expert} × L0–L15 × {resid_pre, attn_out, mlp_out, resid_post}`, with patching
+verified by self-patch identity plus perturbed negative controls, and an equivalence test
+pinning the instrumented forward bitwise against stock LeRobot.
 
 ## What we don't know yet
 
-1. **Rerun in flight with a corrected reference.** The n=200 numbers above scored a 50-step
-   prediction against a *single* demo action repeated 50 times. Fixed to use the demo's
-   true next-50-step chunk; results pending. Both families were scored identically, so the
-   dissociation should survive, but treat the absolute values as provisional.
+1. **Whether any directional effect exists at all.** Pending the counterbalanced rerun on
+   both checkpoints.
 2. **The object arm rests on one pairing.** LIBERO-Goal contains exactly one object swap
    (`bowl`↔`wine bottle`). Rebuilding on all ten tasks raised it to n=80, but that adds
    states, not referent diversity. Real breadth needs another suite.
-3. **One checkpoint, unofficial.** No official LIBERO-finetuned SmolVLA exists. A second
-   checkpoint is running now; if the dissociation doesn't reproduce, it's a property of one
-   upload rather than of SmolVLA.
+3. **Both checkpoints are unofficial.** No official LIBERO-finetuned SmolVLA exists.
 4. **Offline, not closed-loop.** These are action predictions on stored states, so "correct"
    means resembling the demonstrated trajectory, not task success.
 
-Passing already: the **same-instruction control** returns exactly 0.0 divergence, ruling out
-nondeterminism inflating any of these numbers.
+## Lesson recorded
+
+Three separate stimulus-validity bugs have now been caught by inspecting generator output
+rather than by the gates themselves: two non-minimal pair types, and this counterbalancing
+failure. In each case the code looked right and the docstring asserted the property that
+was missing. The counterbalancing bug is the instructive one — it produced *clean,
+significant, plausible* numbers, and was only exposed because a second checkpoint
+disagreed in the opposite direction.
+
+Practical consequence for M2: run the replication checkpoint **before** interpreting any
+localization map, not after. A one-sided design produces heatmaps that look just as
+convincing as real ones.
 
 ## What's next
 

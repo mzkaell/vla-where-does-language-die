@@ -39,8 +39,18 @@ releasable, and `source_sha256` pins the exact source bytes. Use
 | `provenance` | str | Why this state qualifies |
 | `validation` | obj | Which gates passed |
 
-States are drawn from **both** tasks in a pairing, so the set is not biased toward scenes
-where one instruction happens to be the demonstrated one.
+States are **interleaved** from both tasks in a pairing, so the set stays balanced no matter
+where the caller truncates it. `build_pairs` reports `source_is_a_fraction` (must be ≈0.5)
+and per-source-task counts.
+
+This is a correctness requirement, not a nicety. The directional readout asks whether
+commanding the *non-demonstrated* instruction moves the action away from what the
+demonstration did. Asked in only one direction, any systematic asymmetry between the two
+instructions reads as a spurious above- or below-chance score. An earlier version consumed
+task A's states fully before starting task B and, since callers take far fewer pairs than
+one task supplies, produced a set that was 100% A-side — yielding clean, significant, and
+entirely artefactual directional results. A test now asserts both tasks appear in every
+pairing at better than 30/70.
 
 ## Validity gates
 

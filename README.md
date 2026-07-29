@@ -24,26 +24,26 @@ We train nothing — all analysis is forward passes with hooks on frozen public 
 No number appears in this repo unless it was produced by a run whose resolved config is committed
 alongside it. Unrun experiments emit `TODO`/`NaN`, never plausible placeholders (CLAUDE.md §11).
 
-### M0 pilot — `results/m0_pilot_k1000dai/`
+### M0 status — see [`paper/m0_findings.md`](paper/m0_findings.md)
 
-`k1000dai/smolvla_libero_finetune`, 200 LIBERO-Goal pairs, paired bootstrap (10k resamples).
+**A previously reported destination-vs-object dissociation has been retracted.** It came
+from a stimulus-generator bug: every pair drew its state from the A-side task only, which
+turns the directional readout into a test of instruction asymmetry rather than grounding.
+It was exposed when a second checkpoint produced the *opposite* strongly-significant result
+on identical stimuli. The set is now counterbalanced 40/40 across all pairings and both
+checkpoints are rerunning.
 
-| Readout | All pairs | Destination swap (n=160) | Object swap (n=40) |
-|---|---|---|---|
-| Instruction sensitivity ‖a_A − a_B‖ | 7.98 [7.61, 8.35] | 8.29 [7.85, 8.73] | 6.72 [6.30, 7.21] |
-| Directional IFR (chance = 0.5) | 0.885 [0.84, 0.93] | **0.994 [0.98, 1.00]** | **0.45 [0.30, 0.60]** |
+What holds up so far, on 400 pairs across two checkpoints:
 
-The aggregate is dominated by the 160 destination pairs and should not be quoted alone. The
-result is the **dissociation**: the policy tracks a swapped *destination* almost perfectly, but
-a swapped *object* leaves it at chance — while still changing its action substantially. It
-reacts to the object word without grounding it.
+| | k1000dai | msv6 |
+|---|---|---|
+| Instruction sensitivity ‖a_A − a_B‖ | 8.10 [7.82, 8.38] | 8.08 [7.90, 8.26] |
+| Same-instruction control | 0.0 (PASS) | 0.0 (PASS) |
 
-**Caveat, unresolved.** The directional readout compares a 50-step predicted chunk against a
-*single* demonstration action broadcast across all 50 steps, which is a weak reference. Both
-families are scored the same way, so the dissociation is unlikely to be an artifact of it, but
-the absolute values should not be trusted until the reference is the demonstration's true
-next-50-step chunk. Fixing that is the next task, along with more object-swap pairs (n=40 is
-thin, and its interval spans chance).
+Swapping one referent reliably moves the predicted action, and identical inputs give
+bit-identical outputs. Sensitivity is symmetric across the arms and never references the
+demonstration, so the bug does not reach it. Whether the model grounds the swapped word
+*correctly* is exactly what the rerun will answer.
 
 ## Setup for teammates
 

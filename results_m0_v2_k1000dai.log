@@ -1,0 +1,20 @@
+Warning: You are sending unauthenticated requests to the HF Hub. Please set a HF_TOKEN to enable higher rate limits and faster downloads.
+WARNING:huggingface_hub.utils._http:Warning: You are sending unauthenticated requests to the HF Hub. Please set a HF_TOKEN to enable higher rate limits and faster downloads.
+WARNING:root:No accelerated backend detected. Using default cpu, this will be slow.
+WARNING:lerobot.configs.policies:Device 'cuda' is not available. Switching to 'cpu'.
+WARNING:root:No accelerated backend detected. Using default cpu, this will be slow.
+WARNING:lerobot.configs.policies:Device 'cuda' is not available. Switching to 'cpu'.
+`torch_dtype` is deprecated! Use `dtype` instead!
+run_id     : m0_v2_k1000dai
+checkpoint : k1000dai/smolvla_libero_finetune
+pairs      : C:\Users\schma\vla-where-does-language-die\stimuli\libero_goal_pairs_v1.jsonl
+n pairs    : 400
+loading model ...
+Loading  HuggingFaceTB/SmolVLM2-500M-Video-Instruct weights ...
+Loading weights:   0%|          | 0/489 [00:00<?, ?it/s]Loading weights:  26%|##5       | 126/489 [00:00<00:00, 1237.63it/s]Loading weights:  51%|#####1    | 250/489 [00:00<00:00, 1135.41it/s]Loading weights:  94%|#########4| 461/489 [00:00<00:00, 1547.41it/s]Loading weights: 100%|##########| 489/489 [00:00<00:00, 1500.20it/s]
+WARNING:root:Unexpected key(s) when loading model: ['normalize_inputs.buffer_observation_state.mean', 'normalize_inputs.buffer_observation_state.std', 'normalize_targets.buffer_action.mean', 'normalize_targets.buffer_action.std', 'unnormalize_outputs.buffer_action.mean', 'unnormalize_outputs.buffer_action.std']
+Reducing the number of VLM layers to 16 ...
+image keys : ['observation.images.image', 'observation.images.wrist_image']
+state dim  : 8 | action dim: 7
+norm stats : recovered from checkpoint
+  10/400  (0.15 pair/s, eta 44.8 min)
