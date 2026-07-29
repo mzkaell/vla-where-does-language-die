@@ -49,7 +49,22 @@ def build_state(obs: dict[str, np.ndarray], dim: int) -> torch.Tensor:
 
 
 def build_images(obs: dict[str, np.ndarray], image_keys: list[str], size: int) -> dict:
-    """Map LIBERO's two cameras onto whatever image features the checkpoint declares."""
+    """Map LIBERO's two cameras onto whatever image features the checkpoint declares.
+
+    Images are rotated 180 degrees. LIBERO records under MuJoCo's OpenGL convention
+    (`macros_image_convention: opengl` in the HDF5), which stores frames bottom-up
+    relative to how the policies were trained; LIBERO VLA eval code applies the same
+    `[::-1, ::-1]` before inference.
+
+    This is not cosmetic. Measured on 30 pairs against the competence baseline in
+    scripts/check_competence.py, median ||prediction - demonstration|| / baseline:
+
+        identity 0.888 | hflip 0.943 | vflip 0.715 | rot180 0.670
+
+    Feeding unrotated frames leaves the policy barely distinguishable from predicting an
+    unrelated trajectory, which silently turns every downstream grounding number into a
+    measurement of noise.
+    """
     import torch.nn.functional as F
 
     sources = {
@@ -60,7 +75,8 @@ def build_images(obs: dict[str, np.ndarray], image_keys: list[str], size: int) -
     out = {}
     for key in image_keys:
         raw = sources["wrist"] if "wrist" in key.lower() else sources["agent"]
-        t = torch.from_numpy(np.asarray(raw, dtype=np.float32) / 255.0)
+        raw = np.ascontiguousarray(np.asarray(raw)[::-1, ::-1])
+        t = torch.from_numpy(raw.astype(np.float32) / 255.0)
         t = t.permute(2, 0, 1).unsqueeze(0)  # HWC -> 1CHW
         if t.shape[-1] != size:
             t = F.interpolate(t, size=(size, size), mode="bilinear", align_corners=False)
@@ -239,9 +255,24 @@ def main() -> int:
         "passed": bool(control_divergences) and max(control_divergences) == 0.0,
     }
 
+    # Competence gate. A directional score at chance means "does not ground language" only
+    # if the policy can do the task at all; otherwise it means "we measured the direction
+    # of noise". Compare the prediction under the CORRECT instruction against the distance
+    # between two unrelated demonstrations -- see scripts/check_competence.py.
+    correct_dists = np.array(
+        [o.dist_a_to_demo if o.source_is_a else o.dist_b_to_demo for o in outcomes]
+    )
+    correct_dists = correct_dists[np.isfinite(correct_dists)]
+    competence = {
+        "median_pred_to_demo": float(np.median(correct_dists)) if correct_dists.size else None,
+        "note": "run scripts/check_competence.py --run <id> for the baseline-relative ratio",
+    }
+
     payload = result.as_dict() | {
         "same_instruction_control": control,
+        "competence": competence,
         "reference": "demo_action_chunk",
+        "image_orientation": "rot180",
     }
     (out_dir / "metrics.json").write_text(json.dumps(payload, indent=2), encoding="utf-8")
     (out_dir / "per_pair.jsonl").write_text(
