@@ -1,0 +1,10 @@
+run_id: "fs_finetune"
+experiment: "compositional_grounding"
+checkpoint: "k1000dai/smolvla_libero_finetune"
+per_task: 20
+seed: 0
+destinations: ["the plate", "the stove", "top of the cabinet", "the rack"]
+anchors: {"the plate": [0.05177321591101755, 0.02598617121908347, 0.968549932205958], "the stove": [-0.23250660959318906, 0.2560819095096693, 0.9933318521404848], "top of the cabinet": [-0.012820469148772188, -0.19122408159163057, 1.22735947248791], "the rack": [-0.1853942575492872, -0.25755863478749297, 1.2055436912208006]}
+state_composition: ["ee_pos", "ee_ori", "gripper_states"]
+image_orientation: "rot180"
+platform: "Windows-11-10.0.26200-SP0"

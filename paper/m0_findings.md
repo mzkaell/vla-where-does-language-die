@@ -1,51 +1,84 @@
 # M0: the grounding failure is compositional
 
-**Bottom line: SmolVLA follows instructions it was trained on (75–95%) and fails almost
-completely on novel combinations of the same familiar words. When it fails, 96–97% of the
-time it goes to a destination that object *was* trained with. This replicates across both
-competent checkpoints and survives the destination-prior control. It is an object↔destination
-binding failure — the effect CLAUDE.md §3 predicts, and a target for M2.**
-
-Two earlier conditions (neutral states, visual conflict) were null; the reason turned out to
-be that both only ever commanded the 10 memorised tasks. Sections below are in the order the
-work happened, because the nulls are what motivated the compositional design.
-
-*Interim. Assumes you know VLAs and activation patching; assumes nothing about this
-project. Numbers live in `results/`, with each run's resolved config beside them.*
+*Assumes you know VLAs and activation patching; assumes nothing about this project. Every
+number below comes from a run in `results/` with its resolved config committed beside it.*
 
 ---
 
-> ## ⚠️ Retraction
->
-> **An earlier version of this document reported a destination-vs-object dissociation
-> (destination IFR 0.99, object 0.45). That result is withdrawn — it came from a bug in
-> the stimulus generator, not from the model.**
->
-> Every pair drew its state from the **A-side task only**; the generator consumed task A's
-> states fully before reaching task B, and callers never took enough pairs to get there.
-> That turns the directional readout into a test of instruction asymmetry rather than of
-> grounding, because the question "does commanding the *other* instruction move the action
-> away from the demonstration" was only ever asked in one direction.
->
-> The symptom that exposed it: after fixing a separate reference bug, the two checkpoints
-> returned **opposite** and strongly significant scores on identical stimuli — 0.73 above
-> chance vs 0.33 below chance, p ≈ 1e-4. A real model property does not invert between
-> checkpoints while staying that significant; a one-sided design interacting with each
-> policy's own bias does.
->
-> The stimulus set is now counterbalanced 40/40 across all five pairings and both
-> checkpoints have been rerun. The corrected results are below; the retracted magnitudes
-> (0.99 / 0.45) do not survive. Sensitivity was never affected: it is symmetric in the two
-> arms and never references the demonstration.
+## Bottom line
+
+**SmolVLA follows instructions it was trained on (75–95%) and fails almost completely on
+novel combinations of the same familiar words. When it fails, 96–97% of the time it heads to
+a destination that object *was* trained with — it substitutes a memorised pairing rather than
+wandering.** This replicates on both competent checkpoints and survives a
+destination-prior control.
+
+That is an object↔destination **binding** failure: the object word is grounded (behaviour
+stays object-appropriate) while the destination word is not bound to it outside memorised
+pairs. It is the effect CLAUDE.md §3 predicts, and it gives M2 a target *with a matched
+control condition* — same model, same scene, same destination word, one pairing working and
+one not.
+
+Two earlier conditions were null. They are reported in full below, because the reason they
+were null is what identified the compositional design, and because "the effect is specifically
+compositional, not general instruction-blindness" is a claim those nulls support.
+
+| condition | what it varied | result |
+|---|---|---|
+| neutral states | destination or object word, pre-grasp | **null** — 0.745 IFR, follows instruction |
+| visual conflict | same, but mid-trajectory toward a goal | **null** — 0.93–0.95, follows instruction |
+| **compositional** | trained vs never-demonstrated pairings | **effect** — pooled gap +0.35 to +0.41 |
+
+---
 
 ## Setup
 
-SmolVLA-450M (LIBERO-finetuned), evaluated offline on LIBERO-Goal. We use LIBERO-Goal
-because all ten of its tasks share one kitchen scene with a fixed object set, so vision
-underdetermines the target and the instruction has to be read.
+SmolVLA-450M (LIBERO-finetuned), evaluated offline on LIBERO-Goal. All ten LIBERO-Goal tasks
+share one kitchen scene containing the same seven objects (verified from the MuJoCo models),
+so vision underdetermines the target and the instruction must be read.
 
-The stimulus is a **minimal contrastive pair**: one observation, two instructions differing
-in exactly one referent.
+Offline throughout: predictions on fixed stored states from the released demonstrations. No
+simulator, exactly reproducible, and cheap enough to run hundreds of trials on a laptop CPU.
+
+## Competence gate
+
+**This runs before anything else.** A grounding score is uninterpretable unless the policy can
+do the task — a policy producing noise scores at chance, which is indistinguishable from a
+policy that ignores language.
+
+Ratio = median ‖prediction − demonstration‖ ÷ the distance between two *unrelated*
+demonstrations. Below ~0.7 means predictions track the specific trajectory
+(`scripts/check_competence.py`, needs no forward passes when a run already exists).
+
+Screening all eight public checkpoints with a compatible schema (`results/checkpoint_screen.json`):
+
+| checkpoint | ratio | verdict |
+|---|---|---|
+| `k1000dai/smolvla_libero_scratch_80k` | 0.632 | **competent** |
+| `k1000dai/smolvla_libero_finetune` | 0.654 | **competent** |
+| `k1000dai/smolvla-libero-pick-up-…-20k` | 0.808 | not competent |
+| `bicmol/smolvla-libero` | 1.673 | worse than baseline |
+| `AustineJohnBreaker/smolvla_stratch_libero_spatial` | 1.676 | worse than baseline |
+| `xainyuxxx/my-smolvla-libero` | 1.732 | worse than baseline |
+| `msv6/smolvla_meta_libero` | 1.868 | worse than baseline |
+| `jadechoghari/smolvla-libero-ckpts` | — | fails to load (config schema drift) |
+
+**Only 2 of 8 are usable, and both come from the same uploader.** They differ in training
+regime (one finetunes `smolvla_base`, the other trains from scratch), so agreement between
+them is worth something — but they plausibly share a data pipeline, so this is a **weak
+replication**, not two independent sources. No independent competent SmolVLA checkpoint
+appears to be public. See *Limitations*.
+
+The four failures are not our preprocessing. Re-running two across all four image
+orientations leaves them near 1.8 regardless (`msv6` 1.78–2.06, `bicmol` 1.82 flat to three
+decimals — meaning the image barely affects its output). They are broken on LIBERO-Goal.
+
+---
+
+## Condition 1 — neutral states: null
+
+Minimal contrastive pairs: one observation, two instructions differing in exactly one
+referent, both arms run with identical flow-matching noise.
 
 ```
 observation:    demo_18, frame 0          <- byte-identical across arms
@@ -53,155 +86,93 @@ instruction A:  put the bowl on the plate
 instruction B:  put the bowl on the stove
 ```
 
-Since the pixels are identical, any change in the predicted action is attributable to the
-swapped span. Two families: **destination** swaps (`plate`→`stove`) and **object** swaps
-(`bowl`→`wine bottle`). States are drawn pre-grasp, so nothing has been manipulated yet and
-both instructions remain achievable. Both arms run with identical flow-matching noise.
+States drawn **pre-grasp**, so nothing has been manipulated and both instructions remain
+achievable. 400 counterbalanced pairs. Readout is *directional IFR*: the state comes from a
+demonstration of one task, so commanding the other should push the prediction away from that
+demonstrated trajectory (chance 0.5).
 
-Two readouts, chosen to fail differently:
-
-- **Sensitivity** `‖a_A − a_B‖` — does the instruction change the action *at all*? A
-  language-ignoring policy scores 0, so it can't be faked. But it's direction-blind.
-- **Directional IFR** — does it change *correctly*? The state comes from a demonstration of
-  one of the two tasks; commanding the other should push the prediction away from that
-  demonstrated trajectory. Chance = 0.5.
-
-## Competence gate comes first
-
-A directional score means nothing unless the policy can do the task. Ratio is
-median ‖prediction − demonstration‖ over the distance between two *unrelated*
-demonstrations, so <1 means the prediction tracks this specific trajectory
-(`scripts/check_competence.py`).
-
-| | ratio | verdict |
-|---|---|---|
-| k1000dai | **0.614** | competent — predictions track the demonstration |
-| msv6 | **1.998** | worse than an unrelated trajectory — **excluded** |
-
-Rotating the frames 180° moved k1000dai from 0.981 to 0.614 but made msv6 *worse*
-(1.771 → 1.998), so msv6 either expects different preprocessing or is simply broken. Its
-uniformly at-chance scores are therefore uninformative, not a contradicting replication.
-**We have one usable checkpoint, so the standing rule is not yet satisfied.**
-
-## Results — k1000dai only (400 counterbalanced pairs, 10k resamples)
-
-| | destination (n=320) | object (n=80) | all (n=400) |
+| | destination (n=320) | object (n=80) | all |
 |---|---|---|---|
-| Sensitivity ‖a_A − a_B‖ | 6.18 | 5.24 | 5.99 [5.76, 6.23] |
-| Directional IFR | 0.725 [0.675, 0.775] | **0.825 [0.738, 0.900]** | 0.745 [0.703, 0.788] |
-| vs chance | above, p≈1e-4 | above | above, p≈1e-4 |
-| wrong-direction rate | 27.5% | 17.5% | 25.5% |
+| Directional IFR | 0.725 [0.675, 0.775] | 0.825 [0.738, 0.900] | 0.745 [0.703, 0.788] |
 
-destination − object = **−0.100 [−0.191, −0.003]**, significant. Same-instruction control
-passes at exactly 0.0.
+**The policy follows the instruction.** Same-instruction control passes at exactly 0.0
+(identical inputs → bit-identical actions, so no nondeterminism inflates anything).
 
-msv6, for the record (uninterpretable, incompetent): IFR 0.480 [0.433, 0.528], at chance on
-everything.
+*Why null:* pre-grasp states are chosen so both instructions stay achievable — which also
+guarantees nothing in the image contradicts either one. This measured instruction correctness
+on neutral states, not grounding under conflict.
 
-### The premise does not reproduce
+## Condition 2 — visual conflict: also null
 
-**SmolVLA follows the instruction here.** 0.745 overall, well above chance, and objects are
-grounded *better* than destinations — the reverse of the retracted dissociation, which was
-an artefact of upside-down images plus a one-sided design.
-
-There is no "language dies" effect in this setup to localize. RQ1 asks where instruction
-identity *stops* influencing the action; in these stimuli it never stops.
-
-### Why: this design never created a contradiction
-
-Reviewing the design against CLAUDE.md §1, the gap is clear. The project is about
-instruction following **under contradiction** — where the visual prior and the instruction
-*disagree*. These stimuli never construct that disagreement:
-
-- LIBERO-Goal deliberately holds the scene fixed across tasks, so no visual prior favours
-  either instruction.
-- States are drawn **pre-grasp**, precisely so both instructions remain achievable — which
-  also guarantees nothing in the image contradicts either one.
-
-So M0 measured instruction *sensitivity and correctness* on neutral states, not grounding
-under conflict. A ~75% success rate on a neutral, unconflicted swap is roughly what a
-working policy should give. The null is a property of the stimuli, not evidence that VLAs
-ground language robustly.
-
-### Still standing
-
-**The same-instruction control passes at exactly 0.0** on both runs: identical inputs give
-bit-identical actions, so no nondeterminism inflates any divergence above.
-
-**The infrastructure.** 130 tap points across
-`{vlm, expert} × L0–L15 × {resid_pre, attn_out, mlp_out, resid_post}`, with patching
-verified by self-patch identity plus perturbed negative controls, and an equivalence test
-pinning the instrumented forward bitwise against stock LeRobot.
-
-## The conflict regime is also null (`results/conflict_*`)
-
-240 post-commitment pairs, destination swaps only, both competent checkpoints. Here the arm
-is already carrying the object toward the demonstrated goal, so the observation carries a
-prior for it and commanding the other destination puts vision and language in opposition.
+240 post-commitment pairs, destination swaps only. The arm is already carrying the object
+toward the demonstrated goal, so the observation carries a prior for it and commanding the
+other destination puts vision and language in opposition. Restricted to destination swaps by
+construction: with the object already held, an object swap is a different task (put this
+down, pick that up) rather than a redirection.
 
 | | finetune | scratch_80k |
 |---|---|---|
-| Directional IFR | **0.946 [0.917, 0.971]** | **0.929 [0.896, 0.958]** |
-| Sensitivity | 8.25 | 7.11 |
-| Same-instruction control | 0.0 PASS | 0.0 PASS |
+| Directional IFR | 0.946 [0.917, 0.971] | 0.929 [0.896, 0.958] |
 
-**Grounding got *better*, not worse** — 0.93–0.95 versus 0.725 pre-grasp. Both checkpoints
-agree. The policy redirects mid-trajectory when told to, which is the opposite of the
-predicted failure.
+**Grounding got *better*, not worse.** The policy redirects mid-trajectory when told to.
 
 ### The apparent decline at high conflict is a metric artefact
 
-Binned by commitment, both checkpoints dip in the top bin (finetune 0.950→0.983→0.900;
-scratch 0.975→0.983→0.783). That looks like the predicted effect. It is not.
-
-Sensitivity collapses in the same bin (scratch: 8.48 → 3.79). When the instruction barely
-changes the action, the *direction* of that change is estimated from almost no signal, so
-IFR decays toward chance mechanically. Splitting the high-conflict bin by sensitivity:
+Both checkpoints dip in the most-committed bin (finetune 0.950→0.983→0.900; scratch
+0.975→0.983→0.783), which looks like the predicted effect. It is not. Sensitivity collapses
+in the same bin (scratch 8.48 → 3.79), and when the instruction barely moves the action its
+*direction* is estimated from almost no signal, so the score decays toward chance
+mechanically. Splitting that bin by sensitivity:
 
 | within high-conflict bin | low sensitivity | high sensitivity |
 |---|---|---|
-| finetune | 0.842 [0.711, 0.947] | **1.000 [1.000, 1.000]** |
-| scratch_80k | 0.684 [0.526, 0.816] | **0.949 [0.872, 1.000]** |
+| finetune | 0.842 [0.711, 0.947] | 1.000 [1.000, 1.000] |
+| scratch_80k | 0.684 [0.526, 0.816] | 0.949 [0.872, 1.000] |
 
-corr(sensitivity, followed) = +0.250 and +0.399 across all pairs. Where the instruction
-*can* influence the action late in the trajectory, grounding is essentially perfect. The dip
-tracks how much room the instruction has to matter, not whether the model reads it.
+corr(sensitivity, followed) = +0.250 and +0.399. Where the instruction *can* influence the
+action late in the trajectory, grounding is essentially perfect.
 
-This is a resolution limit of the directional readout and it generalizes: **any future use
-must condition on sensitivity**, or a region where language cannot matter will masquerade as
-a region where language is ignored. That is a live risk for M2 — a low-effect site would look
-like a grounding-failure site.
+**This generalizes and is a live risk for M2: a site where the instruction cannot matter looks
+identical to a site where it is ignored. Any use of the directional readout must condition on
+sensitivity.**
 
-### Also note: the two regimes are not directly comparable
+The two regimes are also not directly comparable — pre-grasp, both instructions demand the
+same first move, so the readout sits near chance by construction. Only within-regime
+comparisons are fair.
 
-Post-grasp IFR (0.946) exceeding pre-grasp (0.725) is partly the metric being *easier*
-post-grasp. Pre-grasp, both instructions demand the same first move (reach the object), so
-there is genuinely little to distinguish and the readout sits near chance by construction.
-Only the within-regime progress comparison above is a fair test.
+---
 
-## Compositional test: the effect (`results/comp_*`)
+## Condition 3 — compositional: the effect (`results/comp_*`)
 
-Both nulls above shared a flaw: every instruction was one of the 10 tasks the policy was
-**trained on**, which a policy can pass by recognising memorised sentences without ever
-treating "bowl" and "rack" as recombinable. All ten scenes contain the same seven objects
-(verified), so we can command executable-but-never-demonstrated pairings:
+Both nulls shared one flaw: **every instruction was one of the 10 tasks the policy was trained
+on.** A policy can pass that by recognising which memorised sentence it heard, without ever
+treating "bowl" and "rack" as recombinable meanings. The design gave it no way to fail.
+
+Since all ten scenes contain the same seven objects, we can command pairings that are
+physically executable but were never demonstrated:
 
 ```
 trained:  bowl -> plate, stove, cabinet        bottle -> rack, cabinet
 NOVEL:    bowl -> rack                         bottle -> plate, stove
 ```
 
-Readout is reference-free (no demo exists for a novel command): each destination has an
-anchor — the mean final end-effector position of the demos ending there — and we score which
-anchor direction the predicted net displacement matches. Cosine, so action scaling is
-irrelevant. **Control: trained compositions must beat chance or the readout is broken.**
+**Reference-free readout.** A novel command has no demonstration, so the demo-trajectory
+reference used above does not exist. Instead each destination gets an *anchor* — the mean
+final end-effector position of the demos ending there (sd 0.03–0.05 m, separations 0.19–0.57 m,
+and the cabinet anchor agrees within 0.07 m across two different objects, so it tracks the
+destination rather than the task). We score which anchor direction the predicted net
+displacement matches. Cosine, so the controller's action scaling is irrelevant.
+
+**Control:** trained compositions must beat chance or the readout is broken. They do —
+0.737 [0.686, 0.785] and 0.699 [0.647, 0.750] against chance 0.25.
 
 ### Primary result — within destination, 480 trials per checkpoint
 
-The aggregate trained-vs-novel gap is confounded: the policy has an object-independent
-destination prior (it heads for the cabinet ~45–49% of the time regardless) and
-per-destination accuracy ranges 0.19–0.95. Holding the destination word fixed removes it —
-same anchor, same target direction, only the object and trained/novel status change.
+The raw trained-vs-novel aggregate is confounded and is *not* the headline: the policy has an
+object-independent destination prior (it heads for the cabinet 45–49% of the time regardless)
+and per-destination accuracy spans 0.19–0.95, so the two sets' different destination mixes
+contribute to any aggregate difference. Holding the destination word fixed removes it — same
+anchor, same target direction, only the object and trained/novel status change.
 
 | destination | finetune trained → novel | scratch_80k trained → novel |
 |---|---|---|
@@ -210,141 +181,78 @@ same anchor, same target direction, only the object and trained/novel status cha
 | the rack | 0.188 → 0.000 · **+0.188 [+0.083, +0.292]** | 0.229 → 0.014 · **+0.215 [+0.097, +0.340]** |
 | **pooled** | **+0.410 [+0.329, +0.491]** | **+0.345 [+0.264, +0.431]** |
 
-Every destination, both checkpoints, significant. Control passes: trained compositions score
-0.737 [0.686, 0.785] and 0.699 [0.647, 0.750] against chance 0.25.
+Every destination, both checkpoints, significant.
 
 ### The mechanism is substitution, not confusion
 
-**96–97% of novel-command errors go to a destination that object *was* trained with**
-(136/142 and 135/139). The policy does not wander or freeze; it confidently executes a
-*memorised* pairing for that object. Novel-command margin is strongly negative (−0.54 on
-both), so the named destination loses decisively rather than narrowly.
+**96–97% of novel-command errors (136/142 and 135/139) go to a destination that object *was*
+trained with.** The policy does not wander or freeze — it confidently executes a memorised
+pairing. The named destination loses by a wide margin (−0.54 on both), decisively rather than
+narrowly.
 
-That is the object↔word binding signature: the object word is grounded (behaviour is
-object-appropriate), the destination word is not bound to it outside memorised pairs.
+Object word grounded, destination word unbound outside memorised pairs. That is the binding
+signature, and it is what M3's transplant test is designed to adjudicate: is the correct
+binding absent from the stream feeding the action expert (encoding failure), or present but
+unread (readout failure)?
 
-### Remaining confound, to fix before M2
+---
 
-Within-destination still confounds the object word with the **source state**. For "the
-stove", trained = bowl→stove from bowl demos; novel = bottle→stove from bottle demos —
-different starting configurations. The clean control keeps the state fixed and varies only
-the object word (hold the bowl, command "put the wine bottle on the stove"): odd phrasing,
-but it isolates the object token completely. Cheap and worth running before any localization
-claim rests on this.
+## Limitations
 
-## The decision this forced (resolved by the compositional result)
-
-M0 was the gate: establish the behavioural effect before localizing it. It did not
-establish one, so **M2/M3 cannot start** — patching would localize an effect that isn't
-there. Three ways forward, cheapest first.
-
-**Two regimes have now been tried and both are null.** This is no longer a fixable detail of
-the stimuli; it is a result about this model/benchmark pair. On LIBERO-Goal, competent
-SmolVLA checkpoints follow destination instructions robustly, including mid-trajectory
-redirection under visual commitment. The failure reported in the behavioural literature does
-not appear here.
-
-**A. Replicate a *published* failure condition instead of inventing one.** The behavioural
-targets in CLAUDE.md §14 (BeTTER, ICBench/linguistic blindness, LIBERO-CF/CAG,
-RoboSemanticBench) report real failures; our conditions are evidently milder than theirs.
-Read what manipulation they actually use — distractors, negation, novel compositions,
-unseen referents — and implement that. Cheapest path to a real effect, keeps the pipeline,
-and grounds the work in a claim someone has already defended. *Recommended.*
-
-**B. Accept the negative result and reframe.** Ship what exists: a validated stimulus
-generator, a verified patching implementation, a competence gate, and the finding that
-SmolVLA on LIBERO-Goal does *not* show the reported grounding failure — plus the five
-measurement pitfalls documented below, three of which produced clean significant false
-positives. A methods-and-negative-result workshop paper is a legitimate contribution, and
-the pitfalls are arguably more useful to the field than another heatmap. Weaker novelty.
-
-**C. Change model.** OpenVLA-7B has *official* LIBERO checkpoints — no provenance caveat,
-no competence gamble, only 2 of 8 SmolVLA checkpoints being usable is itself a warning —
-plus discrete action tokens giving a genuine action lens instead of SmolVLA's probe
-surrogate. Needs the 40GB A100 in CLAUDE.md §12 and drops the single-consumer-GPU premise.
-
-## Checkpoint screen (`results/checkpoint_screen.json`)
-
-Eight public LIBERO SmolVLA checkpoints, 50 pairs each, competence ratio as above.
-
-| checkpoint | ratio | verdict |
-|---|---|---|
-| `k1000dai/smolvla_libero_scratch_80k` | 0.632 | **competent** |
-| `k1000dai/smolvla_libero_finetune` | 0.654 | **competent** |
-| `k1000dai/smolvla-libero-pick-up-...-20k` | 0.808 | not competent |
-| `bicmol/smolvla-libero` | 1.673 | worse than baseline |
-| `AustineJohnBreaker/smolvla_stratch_libero_spatial` | 1.676 | worse than baseline |
-| `xainyuxxx/my-smolvla-libero` | 1.732 | worse than baseline |
-| `msv6/smolvla_meta_libero` | 1.868 | worse than baseline |
-| `jadechoghari/smolvla-libero-ckpts` | — | fails to load (config schema drift) |
-
-**Only 2 of 8 are usable, and both are from the same uploader.** That is a real limit on
-independence: they plausibly share a training pipeline and data-preprocessing conventions,
-which is exactly the confound the standing rule exists to catch. They do differ in training
-regime — one finetunes `smolvla_base`, the other trains from scratch — so agreement between
-them is worth something, but it is a **weak replication**, not two independent sources. No
-truly independent competent SmolVLA checkpoint appears to exist publicly.
-
-The four failures are **not** an artefact of our preprocessing. Re-running two of them across
-all four image orientations leaves them at ~1.8 regardless:
-
-| | identity | vflip | hflip | rot180 |
-|---|---|---|---|---|
-| `msv6` | 1.779 | 1.963 | 2.055 | 2.061 |
-| `bicmol` | 1.821 | 1.818 | 1.820 | 1.826 |
-
-`bicmol` being flat to three decimals across orientations means the image barely influences
-its output at all. These checkpoints are broken on LIBERO-Goal, not misconfigured by us.
-
-## Other open items
-
-1. **One usable checkpoint.** msv6 is excluded on competence, so nothing replicates yet. A
-   third public checkpoint should be screened with `check_competence.py` *before* any
-   further analysis — that check costs no forward passes.
-2. **The object arm rests on one pairing.** LIBERO-Goal contains exactly one object swap
-   (`bowl`↔`wine bottle`). n=80 generalizes over *states*, not *referents*; a third
-   checkpoint would not fix that, but LIBERO-Object would.
-3. **Competence is adequate, not comfortable.** 0.614 means the prediction is meaningfully
-   closer to the right trajectory than to a random one, but this is still an unofficial
-   community checkpoint.
-4. **Offline, not closed-loop.** "Correct" means resembling the demonstrated trajectory, not
+1. **One remaining confound, being closed now.** Within-destination still confounds the object
+   word with the **source state**: for "the stove", trained = bowl→stove from bowl demos,
+   novel = bottle→stove from bottle demos — different starting configurations. The clean
+   control holds the state fixed and varies only the object word (bowl in gripper, command
+   "put the wine bottle on the stove"). Odd phrasing, but it isolates the object token.
+   **No localization claim should rest on this result until that runs.**
+2. **Weak replication.** Both competent checkpoints come from one uploader. OpenVLA, with
+   official LIBERO checkpoints, would be a genuinely independent check.
+3. **One object pairing.** LIBERO-Goal supports exactly one object contrast
+   (`bowl`↔`wine bottle`), so results generalize over *states*, not *referents*. LIBERO-Object
+   would broaden this.
+4. **Offline, not closed-loop.** "Correct" means heading toward the named destination, not
    task success.
+5. **Competence is adequate, not comfortable** (0.61–0.65), on unofficial checkpoints.
 
 ## Lessons recorded
 
-Five bugs surfaced during M0, and the dangerous ones were not the crashes — they were the
-three that produced clean, significant, plausible numbers:
+Ten defects surfaced during M0. The dangerous ones were never the crashes — they were the
+**four that produced clean, significant, plausible numbers**:
 
-1. **Directional reference** compared a 50-step prediction against one action repeated 50
-   times.
-2. **Counterbalancing** — 100% of states came from the A-side task, turning the readout into
-   a test of instruction asymmetry. Produced a striking dissociation that was pure artefact.
-3. **Image orientation** — LIBERO stores frames under MuJoCo's OpenGL convention, so the
-   policy saw upside-down scenes and scored no better than predicting a random trajectory.
+1. **Counterbalancing** — 100% of states came from the A-side task, turning the readout into a
+   test of instruction asymmetry. Produced a striking destination-vs-object dissociation that
+   was pure artefact, and was only exposed when a second checkpoint returned the *opposite*
+   strongly-significant result.
+2. **Image orientation** — LIBERO stores frames under MuJoCo's OpenGL convention. The policy
+   saw upside-down scenes and scored no better than predicting a random trajectory, while
+   still yielding confident IFR numbers.
+3. **Directional reference** — compared a 50-step prediction against a single action repeated
+   50 times, scoring a policy that stalls as highly as one that follows through.
+4. **Destination prior** in the compositional readout — caught *before* reporting, by checking
+   the distribution of chosen destinations rather than only the accuracy.
 
-Each was caught only by a check that *could disagree with the result*: a second checkpoint,
-a balance audit, a competence baseline. None was caught by reading the code, which looked
-correct, or the docstrings, which asserted the very properties that were missing.
+Each was caught by a check that **could disagree with the result**: a second checkpoint, a
+balance audit, a competence baseline, an output-distribution check. None was caught by reading
+code that looked correct, or docstrings that asserted the very properties that were missing.
 
-**Consequence for M2:** a layer × component heatmap offers far fewer opportunities to
-visibly contradict itself than a single scalar did. The competence gate and a replication
-checkpoint have to run *before* any map is interpreted, and the permutation null over
-shuffled positions matters more than the headline effect.
+**Consequence for M2:** a layer × component heatmap offers far fewer opportunities to visibly
+contradict itself than a scalar did. The competence gate and the replication checkpoint must
+run *before* any map is interpreted, the permutation null over shuffled positions matters more
+than the headline effect, and every site-level score must condition on sensitivity.
 
-## Held, pending the decision above
+## Next
 
-M2 localization and M3 binding transplant are **not started and should not start** until a
-behavioural effect exists to localize.
-
-The infrastructure is built and tested and will apply unchanged to whichever condition
-replaces this one: 130 tap points over
+**M2 is unblocked** — there is now an effect to localize, with a matched control. The
+infrastructure applies unchanged: 130 tap points over
 `{vlm, expert} × L0–L15 × {resid_pre, attn_out, mlp_out, resid_post}`, patching verified by
-self-patch identity plus perturbed negative controls, positions separable into
-`[image][language][state]` so language-token patching can be isolated from vision, and
-paired bootstrap / permutation / BH-FDR machinery in `src/eval/stats.py`.
+self-patch identity plus perturbed negative controls and an equivalence test pinning the
+instrumented forward bitwise against stock LeRobot, prefix positions separable into
+`[image][language][state]`, and bootstrap/permutation/BH-FDR in `src/eval/stats.py`.
 
-Cost when it does run: 130 sites × 400 pairs × 2 arms is not viable at the ~5–10 s/pair
-observed on CPU, so M2 needs a GPU.
+Order: close the fixed-state control (CPU, running) → M2 sweep on the novel-vs-trained
+contrast, per-family and position-resolved (needs a GPU; 130 sites × trials × 2 arms is not
+viable at the ~5–10 s/trial seen on CPU) → M3 transplant targeting the novel condition, where
+binding demonstrably fails and the trained condition supplies a working comparison.
 
 ## Reproduce
 
@@ -352,9 +260,11 @@ observed on CPU, so M2 needs a GPU.
 uv venv --python 3.12 .venv
 uv pip install --python .venv/bin/python -e ".[vla,dev]"
 .venv/bin/python scripts/download_data.py --all
+.venv/bin/python scripts/screen_checkpoints.py                       # competence first
 .venv/bin/python scripts/build_pairs.py --suite libero_goal --n 400
-.venv/bin/python scripts/reproduce_ifr.py --checkpoint k1000dai/smolvla_libero_finetune
+.venv/bin/python scripts/reproduce_ifr.py   --checkpoint k1000dai/smolvla_libero_finetune
+.venv/bin/python scripts/run_composition.py --checkpoint k1000dai/smolvla_libero_finetune
 ```
 
-Windows paths and troubleshooting are in the README. 57 tests cover patching correctness,
-the statistics, and the stimulus validity gates.
+Windows paths and troubleshooting are in the README. Tests cover patching correctness, the
+statistics, and the stimulus validity gates.

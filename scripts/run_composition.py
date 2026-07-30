@@ -100,6 +100,16 @@ def main() -> int:
     ap.add_argument("--seed", type=int, default=0)
     ap.add_argument("--resamples", type=int, default=10_000)
     ap.add_argument("--run-id", default=None)
+    ap.add_argument(
+        "--fixed-state-control",
+        action="store_true",
+        help=(
+            "Hold the state fixed and vary ONLY the object word. Closes the last confound: "
+            "normally trained and novel trials for a destination come from different demo "
+            "files, so object identity covaries with the starting configuration. Here every "
+            "state is scored under both object words, so the state cancels exactly."
+        ),
+    )
     args = ap.parse_args()
 
     suite_dir = args.data_root / args.suite
@@ -155,9 +165,26 @@ def main() -> int:
     outcomes = []
     skipped = 0
     t0 = time.time()
-    for obj, tasks in OBJECT_SOURCE_TASKS.items():
-        states = collect_states(suite_dir, tasks, args.per_task, args.seed)
-        print(f"\n{obj}: {len(states)} post-grasp states from {len(tasks)} tasks")
+
+    if args.fixed_state_control:
+        # Every state is scored under BOTH object words, so object identity is varied while
+        # the observation is held byte-identical. One of the two commands is then
+        # necessarily counterfactual (the named object is not the one in the gripper) --
+        # that is the point: it isolates the object token from the scene.
+        all_tasks = [t for ts in OBJECT_SOURCE_TASKS.values() for t in ts]
+        state_plan = [
+            (obj, collect_states(suite_dir, all_tasks, args.per_task, args.seed))
+            for obj in OBJECT_SOURCE_TASKS
+        ]
+        print("\nFIXED-STATE CONTROL: every state scored under both object words")
+    else:
+        state_plan = [
+            (obj, collect_states(suite_dir, tasks, args.per_task, args.seed))
+            for obj, tasks in OBJECT_SOURCE_TASKS.items()
+        ]
+
+    for obj, states in state_plan:
+        print(f"\n{obj}: {len(states)} post-grasp states")
         for si, st in enumerate(states):
             obs = {k: st[k] for k in ("agentview_rgb", "eye_in_hand_rgb")}
             obs |= {k: st[k] for k in STATE_KEYS}
