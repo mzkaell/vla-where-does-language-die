@@ -183,12 +183,38 @@ anchor, same target direction, only the object and trained/novel status change.
 
 Every destination, both checkpoints, significant.
 
+### Fixed-state control: the effect survives at roughly half the size (`results/fs_*`)
+
+The result above still confounded the object word with the **source state** — for "the stove",
+trained meant bowl→stove from bowl demos while novel meant bottle→stove from bottle demos.
+The control removes it: every state is scored under **both** object words, so the observation
+is byte-identical across the comparison and the state cancels exactly. One command is then
+necessarily counterfactual (the named object is not the one in the gripper), which is the
+point — it isolates the object token from the scene. Because both arms now share states, the
+comparison is **paired**.
+
+| destination | finetune (n=100 states) | scratch_80k (n=100 states) |
+|---|---|---|
+| the plate | 0.550 → 0.450 · **+0.100 [+0.030, +0.180]** | 0.520 → 0.340 · **+0.180 [+0.100, +0.270]** |
+| the stove | 0.890 → 0.560 · **+0.330 [+0.240, +0.420]** | 0.810 → 0.670 · **+0.140 [+0.060, +0.220]** |
+| the rack | 0.330 → 0.010 · **+0.320 [+0.230, +0.410]** | 0.310 → 0.050 · **+0.260 [+0.170, +0.350]** |
+| **pooled paired** | **+0.250 [+0.197, +0.300]** | **+0.193 [+0.143, +0.243]** |
+
+**All six cells positive and significant.** But the gaps are roughly **half** the uncontrolled
+estimates (+0.41 / +0.35 → +0.25 / +0.19), so a substantial part of the original effect *was*
+the source state rather than the object word. The uncontrolled numbers above should be read as
+an upper bound; **these are the ones to quote.**
+
+Novel-command accuracy is also much higher here (0.34 vs 0.16), because the pooled state set
+means momentum sometimes happens to agree with a novel command. That inflation applies
+identically to both arms — they share states — so the paired gap is unaffected.
+
 ### The mechanism is substitution, not confusion
 
-**96–97% of novel-command errors (136/142 and 135/139) go to a destination that object *was*
-trained with.** The policy does not wander or freeze — it confidently executes a memorised
-pairing. The named destination loses by a wide margin (−0.54 on both), decisively rather than
-narrowly.
+**93–96% of novel-command errors go to a destination that object *was* trained with**
+(187/198 and 180/194 under the fixed-state control; 136/142 and 135/139 without it). The
+policy does not wander or freeze — it confidently executes a memorised pairing, and the named
+destination loses by a clear margin rather than narrowly.
 
 Object word grounded, destination word unbound outside memorised pairs. That is the binding
 signature, and it is what M3's transplant test is designed to adjudicate: is the correct
@@ -199,12 +225,10 @@ unread (readout failure)?
 
 ## Limitations
 
-1. **One remaining confound, being closed now.** Within-destination still confounds the object
-   word with the **source state**: for "the stove", trained = bowl→stove from bowl demos,
-   novel = bottle→stove from bottle demos — different starting configurations. The clean
-   control holds the state fixed and varies only the object word (bowl in gripper, command
-   "put the wine bottle on the stove"). Odd phrasing, but it isolates the object token.
-   **No localization claim should rest on this result until that runs.**
+1. **Effect size is about half the first estimate.** The fixed-state control (above) shrank
+   the pooled gap from +0.41/+0.35 to +0.25/+0.19. All six cells stayed positive and
+   significant, but the uncontrolled numbers were inflated by the source state and should be
+   treated as an upper bound. Quote the paired figures.
 2. **Weak replication.** Both competent checkpoints come from one uploader. OpenVLA, with
    official LIBERO checkpoints, would be a genuinely independent check.
 3. **One object pairing.** LIBERO-Goal supports exactly one object contrast
@@ -249,7 +273,7 @@ self-patch identity plus perturbed negative controls and an equivalence test pin
 instrumented forward bitwise against stock LeRobot, prefix positions separable into
 `[image][language][state]`, and bootstrap/permutation/BH-FDR in `src/eval/stats.py`.
 
-Order: close the fixed-state control (CPU, running) → M2 sweep on the novel-vs-trained
+Order: fixed-state control (done) → M2 sweep on the novel-vs-trained
 contrast, per-family and position-resolved (needs a GPU; 130 sites × trials × 2 arms is not
 viable at the ~5–10 s/trial seen on CPU) → M3 transplant targeting the novel condition, where
 binding demonstrably fails and the trained condition supplies a working comparison.

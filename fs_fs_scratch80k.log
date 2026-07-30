@@ -5,8 +5,8 @@ WARNING:lerobot.configs.policies:Device 'cuda' is not available. Switching to 'c
 Warning: You are sending unauthenticated requests to the HF Hub. Please set a HF_TOKEN to enable higher rate limits and faster downloads.
 WARNING:huggingface_hub.utils._http:Warning: You are sending unauthenticated requests to the HF Hub. Please set a HF_TOKEN to enable higher rate limits and faster downloads.
 `torch_dtype` is deprecated! Use `dtype` instead!
-run_id     : fs_finetune
-checkpoint : k1000dai/smolvla_libero_finetune
+run_id     : fs_scratch80k
+checkpoint : k1000dai/smolvla_libero_scratch_80k
 
 destination anchors (mean final EE position of the demos ending there):
   the plate              [+0.052 +0.026 +0.969]
@@ -17,7 +17,7 @@ destination anchors (mean final EE position of the demos ending there):
 
 loading model ...
 Loading  HuggingFaceTB/SmolVLM2-500M-Video-Instruct weights ...
-Loading weights:   0%|          | 0/489 [00:00<?, ?it/s]Loading weights:  30%|##9       | 146/489 [00:00<00:00, 1421.04it/s]Loading weights:  59%|#####9    | 289/489 [00:00<00:00, 1344.06it/s]Loading weights: 100%|##########| 489/489 [00:00<00:00, 1720.25it/s]
+Loading weights:   0%|          | 0/489 [00:00<?, ?it/s]Loading weights:  28%|##8       | 138/489 [00:00<00:00, 1329.03it/s]Loading weights:  55%|#####5    | 271/489 [00:00<00:00, 1310.52it/s]Loading weights: 100%|##########| 489/489 [00:00<00:00, 1704.65it/s]
 WARNING:root:Unexpected key(s) when loading model: ['normalize_inputs.buffer_observation_state.mean', 'normalize_inputs.buffer_observation_state.std', 'normalize_targets.buffer_action.mean', 'normalize_targets.buffer_action.std', 'unnormalize_outputs.buffer_action.mean', 'unnormalize_outputs.buffer_action.std']
 Reducing the number of VLM layers to 16 ...
 norm stats : recovered
@@ -42,41 +42,41 @@ wine bottle: 100 post-grasp states
     30/100 states  (0.41 trials/s)
     40/100 states  (0.41 trials/s)
     50/100 states  (0.41 trials/s)
-    60/100 states  (0.40 trials/s)
-    70/100 states  (0.40 trials/s)
-    80/100 states  (0.40 trials/s)
-    90/100 states  (0.40 trials/s)
-    100/100 states  (0.40 trials/s)
+    60/100 states  (0.41 trials/s)
+    70/100 states  (0.41 trials/s)
+    80/100 states  (0.41 trials/s)
+    90/100 states  (0.41 trials/s)
+    100/100 states  (0.41 trials/s)
 
 ======================================================================
 COMPOSITIONAL GROUNDING
 ======================================================================
 chance = 0.250 (4 destinations)
 
- trained compositions  n=500  accuracy 0.698 [0.658, 0.738]  ABOVE chance
-         margin over best competitor: +0.1816
+ trained compositions  n=500  accuracy 0.678 [0.636, 0.720]  ABOVE chance
+         margin over best competitor: +0.1651
 
-   novel compositions  n=300  accuracy 0.340 [0.287, 0.393]  ABOVE chance
-         margin over best competitor: -0.2944
+   novel compositions  n=300  accuracy 0.353 [0.300, 0.407]  ABOVE chance
+         margin over best competitor: -0.2773
 
 PRIMARY: within-destination (same destination word, trained vs novel object)
   destination                      trained             novel     gap
-  the plate                  0.550 (n=100)     0.450 (n=100)  +0.100
-  the stove                  0.890 (n=100)     0.560 (n=100)  +0.330
-  the rack                   0.330 (n=100)     0.010 (n=100)  +0.320
+  the plate                  0.520 (n=100)     0.340 (n=100)  +0.180
+  the stove                  0.810 (n=100)     0.670 (n=100)  +0.140
+  the rack                   0.310 (n=100)     0.050 (n=100)  +0.260
   holds the destination prior fixed; only the object and trained/novel differ
 
 chosen-destination distribution (a flat-ish spread means no runaway prior):
-   trained: top of the cabinet=0.51, the stove=0.27, the plate=0.14, the rack=0.08
-     novel: top of the cabinet=0.40, the stove=0.38, the plate=0.21, the rack=0.01
+   trained: top of the cabinet=0.46, the stove=0.33, the plate=0.13, the rack=0.08
+     novel: the stove=0.46, top of the cabinet=0.31, the plate=0.15, the rack=0.08
 
-trained - novel gap: +0.358
+trained - novel gap: +0.325
 where novel commands went when wrong:
-     121  top of the cabinet [trained for this object]
-      54  the stove [trained for this object]
-      10  the plate [trained for this object]
-       7  the plate
-       4  the stove
-       2  the rack [trained for this object]
+      92  top of the cabinet [trained for this object]
+      63  the stove [trained for this object]
+      18  the rack [trained for this object]
+       9  the stove
+       7  the plate [trained for this object]
+       5  the plate
 
-written -> C:\Users\schma\vla-where-does-language-die\results\fs_finetune
+written -> C:\Users\schma\vla-where-does-language-die\results\fs_scratch80k

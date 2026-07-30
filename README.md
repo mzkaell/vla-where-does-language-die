@@ -51,6 +51,7 @@ novel combinations of the same familiar words (bowl->rack, bottle->plate) breaks
 | the stove | 0.889 -> 0.312 | 0.806 -> 0.500 |
 | the rack  | 0.188 -> 0.000 | 0.229 -> 0.014 |
 | **pooled gap** | **+0.410 [+0.329, +0.491]** | **+0.345 [+0.264, +0.431]** |
+| **pooled, fixed-state control (paired)** | **+0.250 [+0.197, +0.300]** | **+0.193 [+0.143, +0.243]** |
 
 Held at a fixed destination word, so the policy's destination prior cannot explain it.
 Control passes (trained 0.74 / 0.70 vs chance 0.25), and **96-97% of novel-command errors go
