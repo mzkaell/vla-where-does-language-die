@@ -7,17 +7,20 @@ number below comes from a run in `results/` with its resolved config committed b
 
 ## Bottom line
 
-**SmolVLA follows instructions it was trained on (75–95%) and fails almost completely on
-novel combinations of the same familiar words. When it fails, 96–97% of the time it heads to
-a destination that object *was* trained with — it substitutes a memorised pairing rather than
-wandering.** This replicates on both competent checkpoints and survives a
-destination-prior control.
+**SmolVLA follows instructions it was trained on but is markedly worse at novel combinations
+of the same familiar words. When it fails, 93–96% of the time it heads to a destination that
+object *was* trained with — it substitutes a memorised pairing rather than wandering.**
+
+Under the strictest control available (same state, only the object word varies, paired):
+**pooled gap +0.250 [+0.197, +0.300] and +0.193 [+0.143, +0.243]** across the two competent
+checkpoints, positive and significant in all six destination × checkpoint cells. Weaker
+designs give roughly double that; those are an upper bound, not the result.
 
 That is an object↔destination **binding** failure: the object word is grounded (behaviour
-stays object-appropriate) while the destination word is not bound to it outside memorised
-pairs. It is the effect CLAUDE.md §3 predicts, and it gives M2 a target *with a matched
-control condition* — same model, same scene, same destination word, one pairing working and
-one not.
+stays object-appropriate) while the destination word is not reliably bound to it outside
+memorised pairs. It is the effect CLAUDE.md §3 predicts, and it gives M2 a target *with a
+matched control condition* — same model, same scene, same state, same destination word, one
+pairing working and one not.
 
 Two earlier conditions were null. They are reported in full below, because the reason they
 were null is what identified the compositional design, and because "the effect is specifically
@@ -27,7 +30,8 @@ compositional, not general instruction-blindness" is a claim those nulls support
 |---|---|---|
 | neutral states | destination or object word, pre-grasp | **null** — 0.745 IFR, follows instruction |
 | visual conflict | same, but mid-trajectory toward a goal | **null** — 0.93–0.95, follows instruction |
-| **compositional** | trained vs never-demonstrated pairings | **effect** — pooled gap +0.35 to +0.41 |
+| compositional | trained vs never-demonstrated pairings | effect — pooled gap +0.35 to +0.41 |
+| **compositional, fixed-state** | as above, state held identical (paired) | **effect — +0.19 to +0.25** |
 
 ---
 
