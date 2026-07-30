@@ -41,10 +41,13 @@ follows the instruction well above chance for *both* referent types:
 unrelated trajectory, so its uniformly at-chance scores are uninformative rather than a
 contradicting replication.
 
-There is no grounding failure here to localize, because **this design never created a
-contradiction**: LIBERO-Goal holds the scene fixed, and states are drawn pre-grasp
-specifically so both instructions stay achievable. So nothing in the image ever disagrees
-with either instruction. M2/M3 are on hold pending a design decision — see the findings doc.
+**The conflict regime is null too.** Drawing states *after* the grasp, where the arm is
+already carrying the object toward the demonstrated goal so vision opposes the instruction,
+grounding gets **better**: IFR 0.946 [0.917, 0.971] and 0.929 [0.896, 0.958] on the two
+competent checkpoints. The policy redirects mid-trajectory when told to.
+
+Two regimes, two checkpoints, no failure to localize. M2/M3 remain unstarted pending a
+design decision -- see [`paper/m0_findings.md`](paper/m0_findings.md).
 
 ## Setup for teammates
 

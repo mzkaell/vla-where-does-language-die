@@ -128,31 +128,82 @@ bit-identical actions, so no nondeterminism inflates any divergence above.
 verified by self-patch identity plus perturbed negative controls, and an equivalence test
 pinning the instrumented forward bitwise against stock LeRobot.
 
+## The conflict regime is also null (`results/conflict_*`)
+
+240 post-commitment pairs, destination swaps only, both competent checkpoints. Here the arm
+is already carrying the object toward the demonstrated goal, so the observation carries a
+prior for it and commanding the other destination puts vision and language in opposition.
+
+| | finetune | scratch_80k |
+|---|---|---|
+| Directional IFR | **0.946 [0.917, 0.971]** | **0.929 [0.896, 0.958]** |
+| Sensitivity | 8.25 | 7.11 |
+| Same-instruction control | 0.0 PASS | 0.0 PASS |
+
+**Grounding got *better*, not worse** — 0.93–0.95 versus 0.725 pre-grasp. Both checkpoints
+agree. The policy redirects mid-trajectory when told to, which is the opposite of the
+predicted failure.
+
+### The apparent decline at high conflict is a metric artefact
+
+Binned by commitment, both checkpoints dip in the top bin (finetune 0.950→0.983→0.900;
+scratch 0.975→0.983→0.783). That looks like the predicted effect. It is not.
+
+Sensitivity collapses in the same bin (scratch: 8.48 → 3.79). When the instruction barely
+changes the action, the *direction* of that change is estimated from almost no signal, so
+IFR decays toward chance mechanically. Splitting the high-conflict bin by sensitivity:
+
+| within high-conflict bin | low sensitivity | high sensitivity |
+|---|---|---|
+| finetune | 0.842 [0.711, 0.947] | **1.000 [1.000, 1.000]** |
+| scratch_80k | 0.684 [0.526, 0.816] | **0.949 [0.872, 1.000]** |
+
+corr(sensitivity, followed) = +0.250 and +0.399 across all pairs. Where the instruction
+*can* influence the action late in the trajectory, grounding is essentially perfect. The dip
+tracks how much room the instruction has to matter, not whether the model reads it.
+
+This is a resolution limit of the directional readout and it generalizes: **any future use
+must condition on sensitivity**, or a region where language cannot matter will masquerade as
+a region where language is ignored. That is a live risk for M2 — a low-effect site would look
+like a grounding-failure site.
+
+### Also note: the two regimes are not directly comparable
+
+Post-grasp IFR (0.946) exceeding pre-grasp (0.725) is partly the metric being *easier*
+post-grasp. Pre-grasp, both instructions demand the same first move (reach the object), so
+there is genuinely little to distinguish and the readout sits near chance by construction.
+Only the within-regime progress comparison above is a fair test.
+
 ## The decision this forces
 
 M0 was the gate: establish the behavioural effect before localizing it. It did not
 establish one, so **M2/M3 cannot start** — patching would localize an effect that isn't
 there. Three ways forward, cheapest first.
 
-**A. Build a real contradiction condition (CPU, ~half a day).** Keep everything and change
-the states: draw from **post-commitment** timesteps, where the demonstration is already
-executing task A, then command B. Now the visual context genuinely conflicts with the
-instruction. This directly tests CLAUDE.md's premise, reuses the whole pipeline, and needs
-no GPU. It also has a natural difficulty knob (how far into the trajectory), so grounding
-can be measured as a function of conflict strength. *Recommended.*
+**Two regimes have now been tried and both are null.** This is no longer a fixable detail of
+the stimuli; it is a result about this model/benchmark pair. On LIBERO-Goal, competent
+SmolVLA checkpoints follow destination instructions robustly, including mid-trajectory
+redirection under visual commitment. The failure reported in the behavioural literature does
+not appear here.
 
-Note this trades away one validity gate: post-grasp states are no longer states where both
-instructions are equally achievable. That is the point — but it means "correct" has to be
-redefined, since the demonstration is no longer a neutral reference.
+**A. Replicate a *published* failure condition instead of inventing one.** The behavioural
+targets in CLAUDE.md §14 (BeTTER, ICBench/linguistic blindness, LIBERO-CF/CAG,
+RoboSemanticBench) report real failures; our conditions are evidently milder than theirs.
+Read what manipulation they actually use — distractors, negation, novel compositions,
+unseen referents — and implement that. Cheapest path to a real effect, keeps the pipeline,
+and grounds the work in a claim someone has already defended. *Recommended.*
 
-**B. Change suite.** LIBERO-Object/-Spatial vary the scene with the task, so the visual
-prior does favour one reading. Cheap, but loses the fixed-scene control that made
-LIBERO-Goal attractive, and reintroduces the visual confound the design was built to avoid.
+**B. Accept the negative result and reframe.** Ship what exists: a validated stimulus
+generator, a verified patching implementation, a competence gate, and the finding that
+SmolVLA on LIBERO-Goal does *not* show the reported grounding failure — plus the five
+measurement pitfalls documented below, three of which produced clean significant false
+positives. A methods-and-negative-result workshop paper is a legitimate contribution, and
+the pitfalls are arguably more useful to the field than another heatmap. Weaker novelty.
 
 **C. Change model.** OpenVLA-7B has *official* LIBERO checkpoints — no provenance caveat,
-no competence gamble — plus discrete action tokens giving a genuine action lens instead of
-SmolVLA's probe surrogate. But it needs the 40GB A100 in CLAUDE.md §12 and abandons the
-single-consumer-GPU premise.
+no competence gamble, only 2 of 8 SmolVLA checkpoints being usable is itself a warning —
+plus discrete action tokens giving a genuine action lens instead of SmolVLA's probe
+surrogate. Needs the 40GB A100 in CLAUDE.md §12 and drops the single-consumer-GPU premise.
 
 ## Checkpoint screen (`results/checkpoint_screen.json`)
 

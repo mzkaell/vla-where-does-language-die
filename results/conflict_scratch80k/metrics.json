@@ -1,0 +1,131 @@
+{
+  "n": 240,
+  "sensitivity": {
+    "value": 7.113329777369897,
+    "lo": 6.671859888508916,
+    "hi": 7.551209810543805,
+    "n": 240,
+    "resamples": 10000,
+    "alpha": 0.05,
+    "excludes_zero": true
+  },
+  "directional_ifr": {
+    "value": 0.9291666666666667,
+    "lo": 0.8958333333333334,
+    "hi": 0.9583333333333334,
+    "n": 240,
+    "resamples": 10000,
+    "alpha": 0.05,
+    "excludes_zero": true
+  },
+  "directional_p_vs_chance": 9.999000099990002e-05,
+  "chance_level": 0.5,
+  "by_family": {
+    "destination_swap": {
+      "n": 240,
+      "sensitivity": {
+        "value": 7.113329777369897,
+        "lo": 6.671859888508916,
+        "hi": 7.551209810543805,
+        "n": 240,
+        "resamples": 10000,
+        "alpha": 0.05,
+        "excludes_zero": true
+      },
+      "directional_ifr": {
+        "value": 0.9291666666666667,
+        "lo": 0.8958333333333334,
+        "hi": 0.9583333333333334,
+        "n": 240,
+        "resamples": 10000,
+        "alpha": 0.05,
+        "excludes_zero": true
+      }
+    }
+  },
+  "by_conflict_strength": [
+    {
+      "progress_lo": 0.0,
+      "progress_hi": 0.3385856079404467,
+      "n": 120,
+      "directional_ifr": {
+        "value": 0.975,
+        "lo": 0.9416666666666667,
+        "hi": 1.0,
+        "n": 120,
+        "resamples": 10000,
+        "alpha": 0.05,
+        "excludes_zero": true
+      },
+      "sensitivity": {
+        "value": 8.480002391338349,
+        "lo": 8.036658625602723,
+        "hi": 8.92044545913736,
+        "n": 120,
+        "resamples": 10000,
+        "alpha": 0.05,
+        "excludes_zero": true
+      },
+      "above_chance": true
+    },
+    {
+      "progress_lo": 0.3385856079404467,
+      "progress_hi": 0.6731750392464678,
+      "n": 60,
+      "directional_ifr": {
+        "value": 0.9833333333333333,
+        "lo": 0.95,
+        "hi": 1.0,
+        "n": 60,
+        "resamples": 10000,
+        "alpha": 0.05,
+        "excludes_zero": true
+      },
+      "sensitivity": {
+        "value": 7.706794512271881,
+        "lo": 6.869841236670812,
+        "hi": 8.556743471523125,
+        "n": 60,
+        "resamples": 10000,
+        "alpha": 0.05,
+        "excludes_zero": true
+      },
+      "above_chance": true
+    },
+    {
+      "progress_lo": 0.6731750392464678,
+      "progress_hi": 1.000000001,
+      "n": 60,
+      "directional_ifr": {
+        "value": 0.7833333333333333,
+        "lo": 0.6833333333333333,
+        "hi": 0.8833333333333333,
+        "n": 60,
+        "resamples": 10000,
+        "alpha": 0.05,
+        "excludes_zero": true
+      },
+      "sensitivity": {
+        "value": 3.7865198145310086,
+        "lo": 2.926700500721733,
+        "hi": 4.683793497383594,
+        "n": 60,
+        "resamples": 10000,
+        "alpha": 0.05,
+        "excludes_zero": true
+      },
+      "above_chance": true
+    }
+  ],
+  "same_instruction_control": {
+    "n": 20,
+    "max_divergence": 0.0,
+    "passed": true
+  },
+  "competence": {
+    "median_pred_to_demo": 3.4280285835266113,
+    "note": "run scripts/check_competence.py --run <id> for the baseline-relative ratio"
+  },
+  "reference": "demo_action_chunk",
+  "image_orientation": "rot180"
+}

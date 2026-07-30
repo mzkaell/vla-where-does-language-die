@@ -1,0 +1,65 @@
+Warning: You are sending unauthenticated requests to the HF Hub. Please set a HF_TOKEN to enable higher rate limits and faster downloads.
+WARNING:huggingface_hub.utils._http:Warning: You are sending unauthenticated requests to the HF Hub. Please set a HF_TOKEN to enable higher rate limits and faster downloads.
+WARNING:root:No accelerated backend detected. Using default cpu, this will be slow.
+WARNING:lerobot.configs.policies:Device 'cuda' is not available. Switching to 'cpu'.
+WARNING:root:No accelerated backend detected. Using default cpu, this will be slow.
+WARNING:lerobot.configs.policies:Device 'cuda' is not available. Switching to 'cpu'.
+`torch_dtype` is deprecated! Use `dtype` instead!
+run_id     : conflict_finetune
+checkpoint : k1000dai/smolvla_libero_finetune
+pairs      : stimuli\libero_goal_conflict_v1.jsonl
+n pairs    : 240
+loading model ...
+Loading  HuggingFaceTB/SmolVLM2-500M-Video-Instruct weights ...
+Loading weights:   0%|          | 0/489 [00:00<?, ?it/s]Loading weights:  26%|##6       | 128/489 [00:00<00:00, 1273.44it/s]Loading weights:  54%|#####3    | 262/489 [00:00<00:00, 1300.96it/s]Loading weights: 100%|##########| 489/489 [00:00<00:00, 1660.22it/s]
+WARNING:root:Unexpected key(s) when loading model: ['normalize_inputs.buffer_observation_state.mean', 'normalize_inputs.buffer_observation_state.std', 'normalize_targets.buffer_action.mean', 'normalize_targets.buffer_action.std', 'unnormalize_outputs.buffer_action.mean', 'unnormalize_outputs.buffer_action.std']
+Reducing the number of VLM layers to 16 ...
+image keys : ['observation.images.image', 'observation.images.wrist_image']
+state dim  : 8 | action dim: 7
+norm stats : recovered from checkpoint
+  10/240  (0.14 pair/s, eta 26.6 min)
+  20/240  (0.14 pair/s, eta 25.9 min)
+  30/240  (0.16 pair/s, eta 22.4 min)
+  40/240  (0.17 pair/s, eta 20.1 min)
+  50/240  (0.17 pair/s, eta 18.4 min)
+  60/240  (0.18 pair/s, eta 17.0 min)
+  70/240  (0.18 pair/s, eta 15.7 min)
+  80/240  (0.18 pair/s, eta 14.6 min)
+  90/240  (0.19 pair/s, eta 13.5 min)
+  100/240  (0.19 pair/s, eta 12.5 min)
+  110/240  (0.19 pair/s, eta 11.5 min)
+  120/240  (0.19 pair/s, eta 10.5 min)
+  130/240  (0.19 pair/s, eta 9.6 min)
+  140/240  (0.19 pair/s, eta 8.7 min)
+  150/240  (0.19 pair/s, eta 7.8 min)
+  160/240  (0.19 pair/s, eta 6.9 min)
+  170/240  (0.19 pair/s, eta 6.0 min)
+  180/240  (0.19 pair/s, eta 5.2 min)
+  190/240  (0.19 pair/s, eta 4.3 min)
+  200/240  (0.19 pair/s, eta 3.4 min)
+  210/240  (0.19 pair/s, eta 2.6 min)
+  220/240  (0.20 pair/s, eta 1.7 min)
+  230/240  (0.20 pair/s, eta 0.9 min)
+  240/240  (0.20 pair/s, eta 0.0 min)
+
+====================================================================
+M0 -- instruction-following under contradiction
+====================================================================
+n = 240 pairs
+instruction sensitivity ||a_A - a_B||  : 8.2505 [7.8269, 8.6813] (n=240)
+directional IFR                        : 0.9458 [0.9167, 0.9708] (n=240)
+  vs chance (0.5): ABOVE chance  (permutation p = 9.999e-05)
+same-instruction control (n=20): max divergence 0.000e+00  [PASS]
+
+by conflict strength (post-grasp progress; 0 = just grasped, 1 = about to place):
+  progress            n              IFR [95% CI]   sensitivity
+  0.00-0.34        120   0.950 [0.908, 0.983]*        8.480
+  0.34-0.67         60   0.983 [0.950, 1.000]*        9.554
+  0.67-1.00         60   0.900 [0.817, 0.967]*        6.487
+  * interval excludes chance (0.5)
+  trend low->high conflict: -0.050
+
+by family:
+  destination_swap   n= 240  sensitivity=8.2505  IFR=0.946 [0.917, 0.971]
+
+written -> C:\Users\schma\vla-where-does-language-die\results\conflict_finetune
