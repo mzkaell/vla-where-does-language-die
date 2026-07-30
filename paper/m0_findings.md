@@ -1,9 +1,14 @@
-# M0 does not reproduce: SmolVLA grounds both referent types
+# M0: the grounding failure is compositional
 
-**Bottom line: on the one checkpoint that can actually do the task, instruction following is
-substantially above chance for both referent types — object swaps *better* than destination
-swaps. The instruction-grounding failure this project set out to localize does not appear in
-this design. Per CLAUDE.md §4 that changes the plan.**
+**Bottom line: SmolVLA follows instructions it was trained on (75–95%) and fails almost
+completely on novel combinations of the same familiar words. When it fails, 96–97% of the
+time it goes to a destination that object *was* trained with. This replicates across both
+competent checkpoints and survives the destination-prior control. It is an object↔destination
+binding failure — the effect CLAUDE.md §3 predicts, and a target for M2.**
+
+Two earlier conditions (neutral states, visual conflict) were null; the reason turned out to
+be that both only ever commanded the 10 memorised tasks. Sections below are in the order the
+work happened, because the nulls are what motivated the compositional design.
 
 *Interim. Assumes you know VLAs and activation patching; assumes nothing about this
 project. Numbers live in `results/`, with each run's resolved config beside them.*
@@ -174,7 +179,60 @@ post-grasp. Pre-grasp, both instructions demand the same first move (reach the o
 there is genuinely little to distinguish and the readout sits near chance by construction.
 Only the within-regime progress comparison above is a fair test.
 
-## The decision this forces
+## Compositional test: the effect (`results/comp_*`)
+
+Both nulls above shared a flaw: every instruction was one of the 10 tasks the policy was
+**trained on**, which a policy can pass by recognising memorised sentences without ever
+treating "bowl" and "rack" as recombinable. All ten scenes contain the same seven objects
+(verified), so we can command executable-but-never-demonstrated pairings:
+
+```
+trained:  bowl -> plate, stove, cabinet        bottle -> rack, cabinet
+NOVEL:    bowl -> rack                         bottle -> plate, stove
+```
+
+Readout is reference-free (no demo exists for a novel command): each destination has an
+anchor — the mean final end-effector position of the demos ending there — and we score which
+anchor direction the predicted net displacement matches. Cosine, so action scaling is
+irrelevant. **Control: trained compositions must beat chance or the readout is broken.**
+
+### Primary result — within destination, 480 trials per checkpoint
+
+The aggregate trained-vs-novel gap is confounded: the policy has an object-independent
+destination prior (it heads for the cabinet ~45–49% of the time regardless) and
+per-destination accuracy ranges 0.19–0.95. Holding the destination word fixed removes it —
+same anchor, same target direction, only the object and trained/novel status change.
+
+| destination | finetune trained → novel | scratch_80k trained → novel |
+|---|---|---|
+| the plate | 0.694 → 0.229 · **+0.465 [+0.305, +0.618]** | 0.597 → 0.083 · **+0.514 [+0.375, +0.646]** |
+| the stove | 0.889 → 0.312 · **+0.576 [+0.431, +0.722]** | 0.806 → 0.500 · **+0.306 [+0.139, +0.472]** |
+| the rack | 0.188 → 0.000 · **+0.188 [+0.083, +0.292]** | 0.229 → 0.014 · **+0.215 [+0.097, +0.340]** |
+| **pooled** | **+0.410 [+0.329, +0.491]** | **+0.345 [+0.264, +0.431]** |
+
+Every destination, both checkpoints, significant. Control passes: trained compositions score
+0.737 [0.686, 0.785] and 0.699 [0.647, 0.750] against chance 0.25.
+
+### The mechanism is substitution, not confusion
+
+**96–97% of novel-command errors go to a destination that object *was* trained with**
+(136/142 and 135/139). The policy does not wander or freeze; it confidently executes a
+*memorised* pairing for that object. Novel-command margin is strongly negative (−0.54 on
+both), so the named destination loses decisively rather than narrowly.
+
+That is the object↔word binding signature: the object word is grounded (behaviour is
+object-appropriate), the destination word is not bound to it outside memorised pairs.
+
+### Remaining confound, to fix before M2
+
+Within-destination still confounds the object word with the **source state**. For "the
+stove", trained = bowl→stove from bowl demos; novel = bottle→stove from bottle demos —
+different starting configurations. The clean control keeps the state fixed and varies only
+the object word (hold the bowl, command "put the wine bottle on the stove"): odd phrasing,
+but it isolates the object token completely. Cheap and worth running before any localization
+claim rests on this.
+
+## The decision this forced (resolved by the compositional result)
 
 M0 was the gate: establish the behavioural effect before localizing it. It did not
 establish one, so **M2/M3 cannot start** — patching would localize an effect that isn't

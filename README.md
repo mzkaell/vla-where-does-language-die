@@ -15,7 +15,7 @@ We train nothing — all analysis is forward passes with hooks on frozen public 
 
 | Milestone | What | State |
 |---|---|---|
-| M0 | Instruction-following rate under contradiction | DOES NOT REPRODUCE — see below |
+| M0 | Instruction-following rate under contradiction | reproduces in the COMPOSITIONAL condition |
 | M1 | Contrastive-pair generator + released stimulus set | 400 pairs released |
 | M2 | Causal localization map (layer × component) | not started |
 | M3 | Binding transplant → encoding-vs-readout verdict | not started |
@@ -41,13 +41,24 @@ follows the instruction well above chance for *both* referent types:
 unrelated trajectory, so its uniformly at-chance scores are uninformative rather than a
 contradicting replication.
 
-**The conflict regime is null too.** Drawing states *after* the grasp, where the arm is
-already carrying the object toward the demonstrated goal so vision opposes the instruction,
-grounding gets **better**: IFR 0.946 [0.917, 0.971] and 0.929 [0.896, 0.958] on the two
-competent checkpoints. The policy redirects mid-trajectory when told to.
+**The failure is compositional.** Both the neutral and the visual-conflict regimes were
+null because every instruction was one of the 10 tasks the policy was *trained on*. Commanding
+novel combinations of the same familiar words (bowl->rack, bottle->plate) breaks it:
 
-Two regimes, two checkpoints, no failure to localize. M2/M3 remain unstarted pending a
-design decision -- see [`paper/m0_findings.md`](paper/m0_findings.md).
+| destination | finetune trained -> novel | scratch_80k trained -> novel |
+|---|---|---|
+| the plate | 0.694 -> 0.229 | 0.597 -> 0.083 |
+| the stove | 0.889 -> 0.312 | 0.806 -> 0.500 |
+| the rack  | 0.188 -> 0.000 | 0.229 -> 0.014 |
+| **pooled gap** | **+0.410 [+0.329, +0.491]** | **+0.345 [+0.264, +0.431]** |
+
+Held at a fixed destination word, so the policy's destination prior cannot explain it.
+Control passes (trained 0.74 / 0.70 vs chance 0.25), and **96-97% of novel-command errors go
+to a destination that object WAS trained with** -- substitution of a memorised pairing, the
+object-word binding signature. Replicates on both competent checkpoints.
+
+Full account, including two null regimes and six measurement pitfalls:
+[`paper/m0_findings.md`](paper/m0_findings.md).
 
 ## Setup for teammates
 

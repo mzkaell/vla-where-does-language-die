@@ -1,0 +1,199 @@
+{
+  "within_destination": {
+    "the plate": {
+      "trained": {
+        "n": 72,
+        "accuracy": 0.6944444444444444,
+        "objects": [
+          "bowl"
+        ]
+      },
+      "novel": {
+        "n": 48,
+        "accuracy": 0.22916666666666666,
+        "objects": [
+          "wine bottle"
+        ]
+      },
+      "gap": 0.4652777777777778
+    },
+    "the stove": {
+      "trained": {
+        "n": 72,
+        "accuracy": 0.8888888888888888,
+        "objects": [
+          "bowl"
+        ]
+      },
+      "novel": {
+        "n": 48,
+        "accuracy": 0.3125,
+        "objects": [
+          "wine bottle"
+        ]
+      },
+      "gap": 0.5763888888888888
+    },
+    "the rack": {
+      "trained": {
+        "n": 48,
+        "accuracy": 0.1875,
+        "objects": [
+          "wine bottle"
+        ]
+      },
+      "novel": {
+        "n": 72,
+        "accuracy": 0.0,
+        "objects": [
+          "bowl"
+        ]
+      },
+      "gap": 0.1875
+    }
+  },
+  "note": "within_destination is the PRIMARY comparison. The aggregate trained/novel blocks below are confounded by an object-independent destination prior.",
+  "chance_level": 0.25,
+  "n_destinations": 4,
+  "trained": {
+    "n": 312,
+    "accuracy": {
+      "value": 0.7371794871794872,
+      "lo": 0.6858974358974359,
+      "hi": 0.7852564102564102,
+      "n": 312,
+      "resamples": 10000,
+      "alpha": 0.05,
+      "excludes_zero": true
+    },
+    "margin": {
+      "value": 0.29109647357845514,
+      "lo": 0.2231790069440295,
+      "hi": 0.36063272842267396,
+      "n": 312,
+      "resamples": 10000,
+      "alpha": 0.05,
+      "excludes_zero": true
+    }
+  },
+  "novel": {
+    "n": 168,
+    "accuracy": {
+      "value": 0.15476190476190477,
+      "lo": 0.10119047619047619,
+      "hi": 0.20833333333333334,
+      "n": 168,
+      "resamples": 10000,
+      "alpha": 0.05,
+      "excludes_zero": true
+    },
+    "margin": {
+      "value": -0.5434555666340299,
+      "lo": -0.6167143249956102,
+      "hi": -0.4704780515288262,
+      "n": 168,
+      "resamples": 10000,
+      "alpha": 0.05,
+      "excludes_zero": true
+    }
+  },
+  "novel_error_destinations": {
+    "the stove [trained for this object]": 47,
+    "top of the cabinet [trained for this object]": 76,
+    "the plate [trained for this object]": 7,
+    "the rack [trained for this object]": 6,
+    "the plate": 5,
+    "the stove": 1
+  },
+  "by_object": {
+    "bowl": {
+      "trained": {
+        "n": 216,
+        "accuracy": {
+          "value": 0.8287037037037037,
+          "lo": 0.7777777777777778,
+          "hi": 0.8751157407407391,
+          "n": 216,
+          "resamples": 10000,
+          "alpha": 0.05,
+          "excludes_zero": true
+        },
+        "margin": {
+          "value": 0.4335897625511474,
+          "lo": 0.34902542360222827,
+          "hi": 0.5194642026026951,
+          "n": 216,
+          "resamples": 10000,
+          "alpha": 0.05,
+          "excludes_zero": true
+        }
+      },
+      "novel": {
+        "n": 72,
+        "accuracy": {
+          "value": 0.0,
+          "lo": 0.0,
+          "hi": 0.0,
+          "n": 72,
+          "resamples": 10000,
+          "alpha": 0.05,
+          "excludes_zero": false
+        },
+        "margin": {
+          "value": -0.742484015184933,
+          "lo": -0.841887071391283,
+          "hi": -0.6401204130430777,
+          "n": 72,
+          "resamples": 10000,
+          "alpha": 0.05,
+          "excludes_zero": true
+        }
+      }
+    },
+    "wine bottle": {
+      "trained": {
+        "n": 96,
+        "accuracy": {
+          "value": 0.53125,
+          "lo": 0.4270833333333333,
+          "hi": 0.6354166666666666,
+          "n": 96,
+          "resamples": 10000,
+          "alpha": 0.05,
+          "excludes_zero": true
+        },
+        "margin": {
+          "value": -0.029513426610102533,
+          "lo": -0.12132920932496088,
+          "hi": 0.0603075706280273,
+          "n": 96,
+          "resamples": 10000,
+          "alpha": 0.05,
+          "excludes_zero": false
+        }
+      },
+      "novel": {
+        "n": 96,
+        "accuracy": {
+          "value": 0.2708333333333333,
+          "lo": 0.1875,
+          "hi": 0.3645833333333333,
+          "n": 96,
+          "resamples": 10000,
+          "alpha": 0.05,
+          "excludes_zero": true
+        },
+        "margin": {
+          "value": -0.39418423022085275,
+          "lo": -0.48550129035989076,
+          "hi": -0.2997265512162541,
+          "n": 96,
+          "resamples": 10000,
+          "alpha": 0.05,
+          "excludes_zero": true
+        }
+      }
+    }
+  },
+  "skipped_zero_motion": 0
+}
