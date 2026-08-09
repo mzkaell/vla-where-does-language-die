@@ -1,15 +1,43 @@
 # Where Does Language Die?
 
 Causal, component-level localization of instruction-grounding failure in Vision-Language-Action
-models. VLAs map a camera image + a language instruction to robot actions, but frequently ignore
-the instruction and act on visual priors. Prior work shows *that* this happens; we find *where*
-inside the model the instruction stops influencing the action, and *why*.
+models. VLAs map a camera image + a language instruction to robot actions, but are widely
+reported to ignore the instruction and act on visual priors. Prior work shows *that* this
+happens; we ask *when* it happens and *where* inside the model the instruction stops
+influencing the action.
 
-> **[`CLAUDE.md`](CLAUDE.md) is the source of truth** for the research questions, method, metrics,
-> repo layout, conventions, and scope. Read it first. This README covers setup only.
+Primary model: **SmolVLA-450M**, evaluated offline on **LIBERO-Goal**. We train nothing — all
+analysis is forward passes on frozen public checkpoints.
 
-Primary model: **SmolVLA-450M** (`lerobot/smolvla_base`). Primary environment: **LIBERO-Goal**.
-We train nothing — all analysis is forward passes with hooks on frozen public checkpoints.
+## Headline result
+
+**Grounding does not fail globally — it fails at composition.** A LIBERO-finetuned SmolVLA
+follows instructions it was trained on, including when we catch it mid-trajectory and tell it
+to redirect against a strong visual prior (0.93–0.95). It fails on *novel combinations of the
+same familiar words*: commanding "put the bowl on the rack" when only bowl→plate/stove/cabinet
+and bottle→rack were ever demonstrated.
+
+Under the strictest control (identical observation, only the object word changes, paired):
+**gap +0.250 [+0.197, +0.300] and +0.193 [+0.143, +0.243]** on the two competent public
+checkpoints, significant in all six destination × checkpoint cells. When it fails, **93–96% of
+errors send the arm to a destination that object *was* trained with** — substitution of a
+memorised pairing, i.e. an object↔destination *binding* failure.
+
+## Start here
+
+| if you want | read |
+|---|---|
+| the result, its controls, and its limitations | **[`paper/m0_findings.md`](paper/m0_findings.md)** |
+| the paper as it will be written | [`paper/draft_v1.md`](paper/draft_v1.md) |
+| where we're submitting and by when | [`paper/workshop_targets.md`](paper/workshop_targets.md) |
+| the research plan, scope, and standing rules | [`CLAUDE.md`](CLAUDE.md) |
+| the stimulus design and its validity gates | [`src/data/README.md`](src/data/README.md) |
+| to run it yourself | [Setup](#setup) below — CPU only, ~15 min, no admin |
+
+**Reading the numbers.** Every result in `results/<run_id>/` ships with the fully-resolved
+config that produced it. Three earlier findings in this repo were **retracted** after controls
+contradicted them; the retractions and their causes are documented in the findings doc rather
+than quietly removed, because the failure modes are reusable.
 
 ## Status
 

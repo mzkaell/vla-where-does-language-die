@@ -51,6 +51,8 @@ results/**
 !results/**/metrics.json
 !results/**/summary.md
 !results/.gitkeep
+!results/README.md
+!results/*.json
 
 # Cached activations are always derived and always large.
 results/**/activations/
@@ -78,3 +80,6 @@ desktop.ini
 !.env.example
 *.key
 wandb/
+
+# Stray run logs (runs write to results/<run_id>/ instead)
+*.log

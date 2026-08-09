@@ -1,0 +1,94 @@
+{
+  "baseline": 7.254202689788921,
+  "n_pairs": 50,
+  "results": [
+    {
+      "checkpoint": "k1000dai/smolvla_libero_finetune",
+      "n": 50,
+      "median_pred_to_demo": 4.742482662200928,
+      "has_norm_stats": true,
+      "action_dim": 7,
+      "state_dim": 8,
+      "seconds": 159.0,
+      "baseline": 7.254202689788921,
+      "ratio": 0.6537565691232322,
+      "verdict": "COMPETENT"
+    },
+    {
+      "checkpoint": "msv6/smolvla_meta_libero",
+      "n": 50,
+      "median_pred_to_demo": 13.552247047424316,
+      "has_norm_stats": true,
+      "action_dim": 7,
+      "state_dim": 8,
+      "seconds": 163.2,
+      "baseline": 7.254202689788921,
+      "ratio": 1.8681924984672096,
+      "verdict": "WORSE THAN BASELINE"
+    },
+    {
+      "checkpoint": "bicmol/smolvla-libero",
+      "n": 50,
+      "median_pred_to_demo": 12.135516166687012,
+      "has_norm_stats": true,
+      "action_dim": 7,
+      "state_dim": 8,
+      "seconds": 171.2,
+      "baseline": 7.254202689788921,
+      "ratio": 1.6728945530801158,
+      "verdict": "WORSE THAN BASELINE"
+    },
+    {
+      "checkpoint": "jadechoghari/smolvla-libero-ckpts",
+      "error": "DecodingError: The fields `gradient_accumulation_steps` are not valid for SmolVLAConfig"
+    },
+    {
+      "checkpoint": "k1000dai/smolvla_libero_scratch_80k",
+      "n": 50,
+      "median_pred_to_demo": 4.583140134811401,
+      "has_norm_stats": true,
+      "action_dim": 7,
+      "state_dim": 8,
+      "seconds": 156.3,
+      "baseline": 7.254202689788921,
+      "ratio": 0.6317910225010213,
+      "verdict": "COMPETENT"
+    },
+    {
+      "checkpoint": "xainyuxxx/my-smolvla-libero",
+      "n": 50,
+      "median_pred_to_demo": 12.561866283416748,
+      "has_norm_stats": true,
+      "action_dim": 7,
+      "state_dim": 8,
+      "seconds": 178.5,
+      "baseline": 7.254202689788921,
+      "ratio": 1.731667396211432,
+      "verdict": "WORSE THAN BASELINE"
+    },
+    {
+      "checkpoint": "AustineJohnBreaker/smolvla_stratch_libero_spatial",
+      "n": 50,
+      "median_pred_to_demo": 12.154789924621582,
+      "has_norm_stats": true,
+      "action_dim": 7,
+      "state_dim": 8,
+      "seconds": 173.5,
+      "baseline": 7.254202689788921,
+      "ratio": 1.6755514622896834,
+      "verdict": "WORSE THAN BASELINE"
+    },
+    {
+      "checkpoint": "k1000dai/smolvla-libero-pick-up-the-black-bowl-20k",
+      "n": 50,
+      "median_pred_to_demo": 5.86292839050293,
+      "has_norm_stats": true,
+      "action_dim": 7,
+      "state_dim": 8,
+      "seconds": 152.8,
+      "baseline": 7.254202689788921,
+      "ratio": 0.8082112729984287,
+      "verdict": "NOT COMPETENT"
+    }
+  ]
+}
