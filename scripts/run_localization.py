@@ -54,11 +54,36 @@ from src.interp.localization import (  # noqa: E402
 )
 
 # The matched contrast. Same destination word; the pairing is trained for one object and
-# never demonstrated for the other.
+# never demonstrated for the other. `target` is the destination whose anchor we score
+# movement toward.
 CONTRASTS = [
-    {"destination": "the rack", "working_object": "wine bottle", "failing_object": "bowl"},
-    {"destination": "the plate", "working_object": "bowl", "failing_object": "wine bottle"},
-    {"destination": "the stove", "working_object": "bowl", "failing_object": "wine bottle"},
+    {"target": "the rack",  "working": ("wine bottle", "the rack"),
+     "failing": ("bowl", "the rack")},
+    {"target": "the plate", "working": ("bowl", "the plate"),
+     "failing": ("wine bottle", "the plate")},
+    {"target": "the stove", "working": ("bowl", "the stove"),
+     "failing": ("wine bottle", "the stove")},
+]
+
+# CONTROL: both arms are TRAINED pairings, so there is no binding failure to recover --
+# only the ordinary causal structure of the network.
+#
+# This exists because the raw recovery profile is confounded. Patching an early layer
+# propagates through everything downstream while patching a late layer changes almost
+# nothing, so recovery rises toward the output for reasons that have nothing to do with
+# where the binding lives. The first sweep showed exactly that shape, and it would look
+# the same in a model with no binding failure at all.
+#
+# Running the identical sweep on a contrast the model handles correctly measures that
+# artefact directly. Subtracting the two profiles cancels it and leaves the component
+# specific to the novel-pairing failure.
+CONTROL_CONTRASTS = [
+    {"target": "the plate", "working": ("bowl", "the plate"),
+     "failing": ("bowl", "the stove")},
+    {"target": "the stove", "working": ("bowl", "the stove"),
+     "failing": ("bowl", "the plate")},
+    {"target": "the rack",  "working": ("wine bottle", "the rack"),
+     "failing": ("wine bottle", "top of the cabinet")},
 ]
 
 
@@ -76,6 +101,16 @@ def main() -> int:
     ap.add_argument("--null-sites", type=int, default=12, help="sites used to build the null")
     ap.add_argument("--min-trials", type=int, default=5,
                     help="minimum scored trials before a site gets a CI (lower for smoke tests)")
+    ap.add_argument(
+        "--contrast-mode",
+        choices=["novel", "control"],
+        default="novel",
+        help=(
+            "novel: trained-vs-novel pairing (the effect). "
+            "control: both arms trained, which isolates the causal-proximity artefact "
+            "so it can be subtracted from the novel profile."
+        ),
+    )
     ap.add_argument("--run-id", default=None)
     args = ap.parse_args()
 
@@ -88,6 +123,7 @@ def main() -> int:
     np.random.seed(args.seed)
     rng = np.random.default_rng(args.seed)
 
+    contrasts = CONTRASTS if args.contrast_mode == "novel" else CONTROL_CONTRASTS
     anchors = build_anchors(task_endpoints(suite_dir))
 
     from src.models.smolvla import SmolVLA, make_batch
@@ -115,7 +151,8 @@ def main() -> int:
                 "checkpoint": args.checkpoint,
                 "n_trials_per_contrast": args.n_trials,
                 "n_sites": len(sites),
-                "contrasts": CONTRASTS,
+                "contrast_mode": args.contrast_mode,
+                "contrasts": contrasts,
                 "seed": args.seed,
                 "fdr": args.fdr,
                 "device": args.device,
@@ -139,8 +176,8 @@ def main() -> int:
     t0 = time.time()
     n_done = 0
 
-    for contrast in CONTRASTS:
-        dest = contrast["destination"]
+    for contrast in contrasts:
+        dest = contrast["target"]
         anchor = anchors[dest]
         # Pool states from every task so both arms see the same distribution.
         from src.eval.composition import OBJECT_SOURCE_TASKS
@@ -159,11 +196,11 @@ def main() -> int:
             noise = model.make_noise(1)
 
             batch_w = make_batch(
-                images, state_t, instruction_for(contrast["working_object"], dest),
+                images, state_t, instruction_for(*contrast["working"]),
                 model.policy, args.device,
             )
             batch_f = make_batch(
-                images, state_t, instruction_for(contrast["failing_object"], dest),
+                images, state_t, instruction_for(*contrast["failing"]),
                 model.policy, args.device,
             )
 

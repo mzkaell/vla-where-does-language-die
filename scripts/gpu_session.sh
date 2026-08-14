@@ -79,6 +79,20 @@ for spec in "loc_finetune:$CKPT_A" "loc_scratch80k:$CKPT_B"; do
   save "M2 localization sweep: $rid"
 done
 
+# ------------------------------------------------- proximity control (M2 control)
+# Both arms trained, so there is no binding failure to recover -- only the network's
+# ordinary causal structure. Subtracting this profile from the novel one cancels the
+# artefact where recovery rises toward the output simply because late patches sit closer
+# to it. Without this the M2 map is not interpretable.
+for spec in "locctl_finetune:$CKPT_A" "locctl_scratch80k:$CKPT_B"; do
+  rid="${spec%%:*}"; ckpt="${spec##*:}"
+  if stage_done "$rid"; then echo "skip $rid (already done)"; continue; fi
+  say "M2 proximity control: $rid"
+  git pull --rebase -q 2>/dev/null
+  $PY scripts/run_localization.py --checkpoint "$ckpt" --device "$DEVICE"       --n-trials "$TRIALS" --contrast-mode control --run-id "$rid"
+  save "M2 proximity control: $rid"
+done
+
 # --------------------------------------- position-resolved + M3 (if available)
 # These are pushed from the laptop mid-session; the pull above picks them up.
 git pull --rebase -q 2>/dev/null
