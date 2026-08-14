@@ -1,0 +1,67 @@
+{
+  "target_site": "expert.L13.resid_post",
+  "target_provenance": "top non-trivial site from loc_finetune (recovery +0.873, NOT BH-significant)",
+  "n_trials_total": 66,
+  "n_held_out": 33,
+  "direction_norm": 101.12278747558594,
+  "points": [
+    {
+      "alpha": 0.25,
+      "n": 33,
+      "recovery": {
+        "value": -0.5663031486130871,
+        "lo": -0.8076730515919857,
+        "hi": -0.33290885676369747
+      },
+      "control_recovery": 0.048345985514063425
+    },
+    {
+      "alpha": 0.5,
+      "n": 33,
+      "recovery": {
+        "value": -1.2658924144857029,
+        "lo": -1.8612084245215077,
+        "hi": -0.6907846135255736
+      },
+      "control_recovery": 0.10897924541068044
+    },
+    {
+      "alpha": 1.0,
+      "n": 33,
+      "recovery": {
+        "value": -2.767397934052176,
+        "lo": -4.103892366552428,
+        "hi": -1.5186567046642048
+      },
+      "control_recovery": 0.27491874396926497
+    },
+    {
+      "alpha": 1.5,
+      "n": 33,
+      "recovery": {
+        "value": -3.807136386673398,
+        "lo": -5.648327207064384,
+        "hi": -2.041690963940729
+      },
+      "control_recovery": 0.506754308647987
+    },
+    {
+      "alpha": 2.0,
+      "n": 33,
+      "recovery": {
+        "value": -4.517357980881109,
+        "lo": -6.643637509959406,
+        "hi": -2.4311126765316065
+      },
+      "control_recovery": 0.7821848673297762
+    }
+  ],
+  "verdict": "ENCODING",
+  "reason": "best transplant recovers only -0.57 (CI lower bound -0.81), below the 0.50 threshold. Supplying the binding at this site does not restore behaviour, consistent with the binding never being formed rather than being formed and unread.",
+  "best_alpha": 0.25,
+  "best_recovery": -0.5663031486130871,
+  "best_recovery_lo": -0.8076730515919857,
+  "control_recovery": 0.048345985514063425,
+  "margin_over_control": -0.6146491341271505,
+  "threshold": 0.5
+}

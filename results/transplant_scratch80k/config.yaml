@@ -1,0 +1,12 @@
+run_id: "transplant_scratch80k"
+experiment: "M3_binding_transplant"
+checkpoint: "k1000dai/smolvla_libero_scratch_80k"
+target_site: "expert.L13.resid_post"
+target_provenance: "top non-trivial site from loc_finetune (recovery +0.873, NOT BH-significant)"
+alphas: [0.25, 0.5, 1.0, 1.5, 2.0]
+n_trials_per_contrast: 40
+seed: 0
+device: "cuda"
+image_orientation: "rot180"
+state_composition: ["ee_pos", "ee_ori", "gripper_states"]
+platform: "Linux-6.17.0-1019-aws-x86_64-with-glibc2.39"
