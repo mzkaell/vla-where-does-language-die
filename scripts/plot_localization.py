@@ -63,31 +63,42 @@ def plot_heatmap(data: dict, out: Path):
     vals = [
         abs(s["recovery"]["value"])
         for s in sites
-        if s["layer"] is not None and not s["degenerate"]
+        if not s["degenerate"] and (s["layer"] is not None or s["component"] == "final_norm")
     ]
     finite = [v for v in vals if np.isfinite(v)]
     vmax = max(0.1, max(finite)) if finite else 0.1
+    has_fn = any(s["component"] == "final_norm" for s in sites)
     for ax, tower in zip(axes[0], towers, strict=False):
-        grid = np.full((len(comps), len(layers)), np.nan)
+        rows = comps + (["final_norm"] if has_fn else [])
+        cols = list(layers) + (["FN"] if has_fn else [])
+        grid = np.full((len(rows), len(cols)), np.nan)
         degen = np.zeros_like(grid, dtype=bool)
         sig = np.zeros_like(grid, dtype=bool)
         for s in sites:
-            if s["tower"] != tower or s["layer"] is None or s["component"] not in comps:
+            if s["tower"] != tower:
                 continue
-            i, j = comps.index(s["component"]), layers.index(s["layer"])
+            if s["component"] == "final_norm":
+                # one site, no layer: render in its own row/column so it stays
+                # visible -- it sits directly on the readout path and is a live
+                # candidate for the M3 extract site
+                i, j = len(comps), len(layers)
+            elif s["layer"] is not None and s["component"] in comps:
+                i, j = comps.index(s["component"]), layers.index(s["layer"])
+            else:
+                continue
             grid[i, j] = s["recovery"]["value"]
             degen[i, j] = s["degenerate"]
             sig[i, j] = s["significant_fdr"]
         im = ax.imshow(grid, cmap="RdBu_r", vmin=-vmax, vmax=vmax, aspect="auto")
-        for i in range(len(comps)):
-            for j in range(len(layers)):
+        for i in range(len(rows)):
+            for j in range(len(cols)):
                 if degen[i, j]:
                     ax.add_patch(plt.Rectangle((j - 0.5, i - 0.5), 1, 1, color="0.8"))
                 elif sig[i, j]:
                     ax.plot(j, i, "k.", ms=5)
         ax.set_title(f"{tower} tower")
-        ax.set_xticks(range(len(layers)), layers)
-        ax.set_yticks(range(len(comps)), comps)
+        ax.set_xticks(range(len(cols)), cols)
+        ax.set_yticks(range(len(rows)), rows)
         ax.set_xlabel("layer")
     fig.colorbar(im, ax=axes[0], shrink=0.85, label="recovery (patched, toward named destination)")
     fig.suptitle(
