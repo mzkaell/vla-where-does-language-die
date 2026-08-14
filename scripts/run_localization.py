@@ -69,6 +69,13 @@ def main() -> int:
     ap.add_argument("--data-root", type=Path, default=REPO_ROOT / "data" / "libero")
     ap.add_argument("--n-trials", type=int, default=40, help="states per contrast")
     ap.add_argument("--sites-limit", type=int, default=None, help="first N sites (smoke test)")
+    ap.add_argument("--components", default=None,
+                    help="comma-separated component filter, e.g. 'resid_post' or "
+                         "'resid_post,final_norm'. Cuts cost ~4x while keeping the full "
+                         "depth profile of both towers, which is what the drop-off "
+                         "question needs. Applied before --sites-limit.")
+    ap.add_argument("--towers", default=None,
+                    help="comma-separated tower filter: 'vlm', 'expert', or both")
     ap.add_argument("--device", default="cpu")
     ap.add_argument("--seed", type=int, default=0)
     ap.add_argument("--resamples", type=int, default=10_000)
@@ -102,6 +109,12 @@ def main() -> int:
     sdim = cfg.robot_state_feature.shape[0]
 
     sites = model.sites()
+    if args.components:
+        wanted = {c.strip() for c in args.components.split(",")}
+        sites = [s for s in sites if s.component in wanted]
+    if args.towers:
+        wanted_towers = {c.strip() for c in args.towers.split(",")}
+        sites = [s for s in sites if s.tower in wanted_towers]
     if args.sites_limit:
         sites = sites[: args.sites_limit]
     print(f"sites      : {len(sites)}   norm stats: {model.has_norm_stats}")
@@ -115,6 +128,8 @@ def main() -> int:
                 "checkpoint": args.checkpoint,
                 "n_trials_per_contrast": args.n_trials,
                 "n_sites": len(sites),
+                "components_filter": args.components,
+                "towers_filter": args.towers,
                 "contrasts": CONTRASTS,
                 "seed": args.seed,
                 "fdr": args.fdr,
