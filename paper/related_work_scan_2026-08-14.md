@@ -1,17 +1,18 @@
 # Concurrent-work scan, 2026-08-14
 
-Web scan for concurrent/overlapping work, Feb–Aug 2026. Every claim below was
-checked against the arXiv page or repo it cites; the two things that could not
-be verified are listed at the bottom. Bottom line first.
+Web scan for concurrent/overlapping work, Feb–Aug 2026, followed by an
+independent second-pass verification that re-fetched the two load-bearing
+sources and corrected two characterizations (marked below). Things that could
+not be verified are listed at the bottom. Bottom line first.
 
 ## Verdict
 
 **The novelty claim needs a reframe.** "First inside-the-model causal account of
-instruction grounding in VLAs" is no longer defensible: arXiv 2603.19233 (ICLR
-2026) already runs causal activation injection on SmolVLA and OpenVLA-OFT and
-already states a probe-based encoded-but-not-used result. The behavioural
-compositional finding is also independently established (three times, once on
-SmolVLA specifically).
+instruction grounding in VLAs" is no longer defensible: arXiv 2603.19233
+(Multimodal Intelligence Workshop @ ICLR 2026) already runs causal activation
+injection on SmolVLA and OpenVLA-OFT and already states a probe-based
+encoded-but-not-used result (on pi-0.5). The behavioural compositional finding
+is also independently established (three times, once on SmolVLA specifically).
 
 **What remains open, and no paper occupies it:** a component-level causal
 localization of **where compositional object–destination binding fails**, with
@@ -24,20 +25,27 @@ binding failure in VLAs"*, citing 2603.19233 and 2602.24143 as concurrent work.
 
 ## Direct competitors
 
-- **2603.19233 — "Not All Features Are Created Equal" (ICLR 2026, March).**
-  The big one. Six models incl. OpenVLA-OFT and SmolVLA; activation injection,
-  counterfactual prompting, per-token SAEs, linear probes, 394k rollouts.
-  Headline: fine-tuned VLAs are "effectively vision-only policies with
-  vestigial language pathways"; a layer-17 probe decodes the prompt at 99.3%
-  while behaviour ignores it. Verified gaps: no systematic layer/component
-  localization of where language influence is lost, and the paper itself lists
-  "compositional instructions" as a limitation. Cite as concurrent work; the
-  probe result is correlational where ours is causal.
-- **2602.24143 — "Robust Skills, Brittle Grounding" (Feb 27).** Held-out
-  object–location pairings on **SmolVLA** and pi-0.5; concludes benchmark
-  success reflects "object-location correlations rather than genuine language
-  grounding." Purely behavioural, no internals. This scoops the M0 behavioural
-  headline on our own model. Paper A must cite it and lead with what it does
+- **2603.19233 — "Not All Features Are Created Equal" (Multimodal Intelligence
+  Workshop @ ICLR 2026, March).** *Two corrections from the verification pass:
+  it is a workshop paper, not ICLR main; and its headline is NOT "VLAs are
+  vision-only" — it is that language sensitivity depends on task structure
+  (language ignored when vision uniquely specifies the task, essential in
+  multi-goal scenes; libero_goal collapses 94%→10% under wrong prompts).* Six
+  models incl. OpenVLA-OFT and SmolVLA; activation injection, counterfactual
+  prompting, per-token SAEs, linear probes. The layer-17 probe decoding the
+  prompt at 99.3% while behaviour ignores it is real but **pi-0.5-specific**.
+  Verified gaps stand: no layer/component localization of where *language*
+  influence is lost (its layer interventions act on visual/full-pathway
+  activations), and its limitations section names compositional instructions
+  as future work. Cite as concurrent work with the task-structure conditional
+  intact; the probe result is correlational where ours is causal.
+- **2602.24143 — "Robust Skills, Brittle Grounding" (Feb 27, preprint, no
+  venue).** Held-out object–location pairings on **SmolVLA** and pi-0.5;
+  success reflects "object–location correlations that do not transfer beyond
+  the training distribution" (verified quote; the paper phrases it as "can
+  mask", not an absolute claim). Purely behavioural, no internals — verified,
+  the authors call it "deliberately diagnostic rather than prescriptive". This
+  scoops the M0 behavioural headline on our own model. Paper A must cite it and lead with what it does
   not have: the vision-override null (C2), the error-substitution signature
   (93–96%), the strict pixel-identical control, and the causal follow-through.
 - **2607.21582 — "Scale Up Strategically" (NVIDIA/Northeastern, July).**

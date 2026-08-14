@@ -59,8 +59,9 @@ smoke-tested (`scripts/run_transplant.py`); it needs M2's site name and hours, n
 
 **The novelty premise moved.** The concurrent-work scan
 (`related_work_scan_2026-08-14.md`) found the behavioural compositional finding independently
-established three times (2602.24143 on SmolVLA itself), and 2603.19233 (ICLR 2026) already
-running causal activation injection on our two models. Paper A can no longer lead with "VLAs
+established three times (2602.24143 on SmolVLA itself, a preprint), and 2603.19233 (an ICLR
+2026 *workshop* paper, verified — not ICLR main) already running causal activation injection
+on our two models. Paper A can no longer lead with "VLAs
 fail compositionally" as a discovery; it leads with what the others lack — the vision-override
 null, the 93–96% substitution signature, the pixel-identical control, the competence gate —
 and cites 2602.24143 as concurrent. Paper B's claim narrows to the still-unoccupied
