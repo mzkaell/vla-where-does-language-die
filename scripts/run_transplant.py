@@ -74,6 +74,10 @@ def main() -> int:
     args = ap.parse_args()
 
     inject = args.inject_site or args.extract_site
+    if args.positions == "lang" and not args.extract_site.startswith("vlm."):
+        # expert activations are action tokens; prefix arithmetic applied to them
+        # returns plausible-looking garbage positions, not an error
+        sys.exit("--positions lang is only defined for vlm.* extract sites")
     alphas = [float(a) for a in args.alphas.split(",")]
     pos = None
     if args.positions and args.positions != "lang":

@@ -479,6 +479,10 @@ def language_token_positions(policy: Any, prefix_len: int, n_lang_tokens: int) -
     assert not policy.config.add_image_special_tokens, (
         "prefix layout assumes no image special tokens; recompute for this checkpoint"
     )
+    assert getattr(policy.config, "prefix_length", -1) == -1, (
+        "prefix_length padding appends AFTER the state token, so 'state is last' "
+        "would be false and this slice would silently shift; recompute for this checkpoint"
+    )
     end = prefix_len - 1  # the state token is last
     start = end - n_lang_tokens
     if start < 0:
