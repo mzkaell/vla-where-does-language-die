@@ -16,9 +16,12 @@ feedback: the step-0 injection changes the trajectory, so at steps 1..9 the stre
 longer equals the failing run's and old + (w_k - f_k) != w_k. On expert sites the
 alpha=1 number is a genuinely different quantity from M2's recovery, not a sanity check.
 
-Verdict rule (CLAUDE.md §8): **readout** if mean recovery ≥ 0.5 of the working-minus-
-failing gap. The rule is stated on the recovery defined in localization.py, so the two
-milestones share one readout and are directly comparable.
+Verdict rule: CLAUDE.md §8 states "readout if recovery ≥50% of the gap" on the mean;
+this module deliberately applies it to the bootstrap CI instead (whole interval above
+0.5 → readout, whole interval below → not-readout, straddling → indeterminate). That is
+stricter than §8 as written: a mean of 0.6 with CI [0.45, 0.75] is "readout" per the
+prose and "indeterminate" here. The recovery itself is the one defined in
+localization.py, so the two milestones stay directly comparable.
 """
 
 from __future__ import annotations
@@ -117,13 +120,15 @@ def judge(
     """
     from src.eval.stats import bootstrap_mean
 
-    r = np.array(
-        [recovery_fraction(c, b) for c, b in zip(cos_patched, baselines, strict=True) if b.usable],
-        dtype=np.float64,
-    )
+    triples = list(zip(cos_patched, baselines, displacements, strict=True))
+    kept = [(c, b, d) for c, b, d in triples if b.usable]
+    r = np.array([recovery_fraction(c, b) for c, b, _ in kept], dtype=np.float64)
     n_dropped = int(np.sum(~np.isfinite(r)))
     r = r[np.isfinite(r)]
-    disp = np.array(displacements, dtype=np.float64)
+    # degeneracy is judged on the SAME trials the CI is built from; mixing filtered
+    # recoveries with unfiltered displacements lets normal motion on unusable trials
+    # mask a collapsed-motion injection on the usable ones — a false-readout path
+    disp = np.array([d for _, _, d in kept], dtype=np.float64)
     degenerate = bool(disp.size and np.median(disp) < MIN_DISPLACEMENT * 10)
     if degenerate or r.size < min_trials:
         return TransplantVerdict(

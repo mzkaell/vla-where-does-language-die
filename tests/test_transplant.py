@@ -93,3 +93,18 @@ def test_unusable_trials_are_excluded():
     baselines = [_base(i=i) for i in range(5)] + [_base(cw=0.01, cf=0.0, i=9)]
     v = judge("s", "s", 1.0, [1.0] * 6, baselines, [1.0] * 6)
     assert v.n == 5
+
+
+def test_degeneracy_judged_on_usable_trials_only():
+    # normal motion on unusable trials must not mask collapsed motion on usable
+    # ones: 5 usable trials with degenerate displacement + 8 unusable with normal
+    baselines = [_base(i=i) for i in range(5)] + [_base(cw=0.01, cf=0.0, i=i) for i in range(5, 13)]
+    disps = [1e-5] * 5 + [1.0] * 8
+    v = judge("s", "s", 1.0, [1.0] * 13, baselines, disps)
+    assert v.degenerate and v.verdict == "indeterminate"
+
+
+def test_displacements_length_is_checked():
+    baselines = [_base(i=i) for i in range(5)]
+    with pytest.raises(ValueError):
+        judge("s", "s", 1.0, [1.0] * 5, baselines, [1.0] * 4)
