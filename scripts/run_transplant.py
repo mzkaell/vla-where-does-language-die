@@ -177,7 +177,7 @@ def main() -> int:
     # ---- pass 1: collect activations and baselines -------------------------------
     est_w, est_f, trials = [], [], []
     for contrast in CONTRASTS:
-        dest = contrast["destination"]
+        dest = contrast["target"]
         anchor = anchors[dest]
         for st in collect_states(suite_dir, pooled, args.n_trials, args.seed)[: args.n_trials]:
             obs = {k: st[k] for k in ("agentview_rgb", "eye_in_hand_rgb")}
@@ -187,9 +187,9 @@ def main() -> int:
             ee = np.asarray(st["ee_pos"], dtype=np.float64)
             noise = model.make_noise(1)
 
-            bw = make_batch(images, state_t, instruction_for(contrast["working_object"], dest),
+            bw = make_batch(images, state_t, instruction_for(*contrast["working"]),
                             model.policy, args.device)
-            bf = make_batch(images, state_t, instruction_for(contrast["failing_object"], dest),
+            bf = make_batch(images, state_t, instruction_for(*contrast["failing"]),
                             model.policy, args.device)
 
             rw = model.forward_with_cache(bw, sites=[site], noise=noise)

@@ -184,8 +184,12 @@ def main() -> int:
 
         pooled = [t for ts in OBJECT_SOURCE_TASKS.values() for t in ts]
         states = collect_states(suite_dir, pooled, args.n_trials, args.seed)[: args.n_trials]
-        print(f"\ncontrast: '{dest}'  working={contrast['working_object']}  "
-              f"failing={contrast['failing_object']}  ({len(states)} states)")
+        wo, wd = contrast["working"]
+        fo, fd = contrast["failing"]
+        print(
+            f"\ntarget '{dest}' | working: {wo} -> {wd} | failing: {fo} -> {fd} "
+            f"({len(states)} states)"
+        )
 
         for st in states:
             obs = {k: st[k] for k in ("agentview_rgb", "eye_in_hand_rgb")}
