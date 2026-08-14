@@ -49,3 +49,23 @@ benchmarks, and emerging research ideas," so a behavioural + benchmark paper is 
 too.
 
 Writing Paper A first is not wasted work under either branch: it is the front half of Paper B.
+
+## Update 2026-08-14 — two premises above are now dead
+
+**The GPU premise is dead.** MPS matches CPU within 0.02 on the M2 smoke and runs 24× faster
+(see `results/_loc_smoke_mps`); the full 130-site, n=40 sweep is a ~3 h laptop job. Paper B's
+"needs GPU time" branch collapses into "needs analysis time." M3 machinery is implemented and
+smoke-tested (`scripts/run_transplant.py`); it needs M2's site name and hours, not hardware.
+
+**The novelty premise moved.** The concurrent-work scan
+(`related_work_scan_2026-08-14.md`) found the behavioural compositional finding independently
+established three times (2602.24143 on SmolVLA itself), and 2603.19233 (ICLR 2026) already
+running causal activation injection on our two models. Paper A can no longer lead with "VLAs
+fail compositionally" as a discovery; it leads with what the others lack — the vision-override
+null, the 93–96% substitution signature, the pixel-identical control, the competence gate —
+and cites 2602.24143 as concurrent. Paper B's claim narrows to the still-unoccupied
+intersection: *component-level causal localization of the binding failure, with a causal
+encoding-vs-readout verdict.* 2603.19233 names exactly this as future work, so speed matters.
+
+Net effect: the A-vs-B decision tilts toward B. A alone is now a replication-plus-controls
+paper; B is the paper nobody else has.
