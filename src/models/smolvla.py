@@ -491,19 +491,21 @@ def language_token_positions(policy: Any, prefix_len: int, n_lang_tokens: int) -
     tokens per image and this arithmetic would silently point at the wrong slice, so
     the assert is load-bearing.
     """
-    assert not policy.config.add_image_special_tokens, (
-        "prefix layout assumes no image special tokens; recompute for this checkpoint"
-    )
+    if policy.config.add_image_special_tokens:
+        raise ValueError(
+            "prefix layout assumes no image special tokens; recompute for this checkpoint"
+        )
     # lerobot pads the prefix AFTER the state token when its unpadded length is
     # below config.prefix_length, which would make 'state is last' false. Padding
     # can only have happened if the observed length equals the configured target
     # (non-positive targets never pad; an observed length above the target was
     # never padded), so that is the one case to refuse.
     target = getattr(policy.config, "prefix_length", -1)
-    assert target <= 0 or prefix_len > target, (
-        f"prefix of {prefix_len} tokens may be padded to prefix_length={target}; "
-        "'state is last' no longer holds and this slice would silently shift"
-    )
+    if target > 0 and prefix_len <= target:
+        raise ValueError(
+            f"prefix of {prefix_len} tokens may be padded to prefix_length={target}; "
+            "'state is last' no longer holds and this slice would silently shift"
+        )
     end = prefix_len - 1  # the state token is last
     start = end - n_lang_tokens
     if start < 0:
@@ -540,11 +542,19 @@ def make_batch(
     tok = _tokenizer(cfg.vlm_model_name)
 
     tasks = _prep_tasks([instruction] if isinstance(instruction, str) else list(instruction))
+    if pad_to_length is not None and not 0 < pad_to_length <= cfg.tokenizer_max_length:
+        # 0 must error, not silently fall back to native padding (which would
+        # resurrect the cross-run shape mismatch this parameter exists to fix),
+        # and a length above the checkpoint's cap would feed it more language
+        # tokens than it was ever configured for
+        raise ValueError(
+            f"pad_to_length={pad_to_length} outside (0, {cfg.tokenizer_max_length}]"
+        )
     enc = tok(
         tasks,
-        padding="max_length" if pad_to_length else cfg.pad_language_to,
+        padding="max_length" if pad_to_length is not None else cfg.pad_language_to,
         padding_side="right",
-        max_length=pad_to_length or cfg.tokenizer_max_length,
+        max_length=pad_to_length if pad_to_length is not None else cfg.tokenizer_max_length,
         truncation=True,
         return_tensors="pt",
     )

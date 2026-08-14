@@ -60,6 +60,13 @@ def test_make_batch_honours_pad_to_length(policy):
     assert shapes == {n}
 
 
+def test_pad_to_length_rejects_nonsense(policy):
+    state = torch.zeros(1, 8)
+    for bad in (0, policy.config.tokenizer_max_length + 1):
+        with pytest.raises(ValueError, match="outside"):
+            make_batch({}, state, PAIR[0], policy, pad_to_length=bad)
+
+
 def test_native_longest_still_mismatches(policy):
     """The guard that stops the tests above from passing vacuously: without the
     override, this pair really does produce unequal token lengths."""
