@@ -33,7 +33,7 @@ dependencies = [
 # SmolVLA policy + LeRobot runtime. Kept separate from the base install so the
 # metric/stat tests can run without pulling the full robotics stack.
 vla = [
-    "lerobot[smolvla]>=0.6.0",
+    "lerobot[smolvla]==0.6.0",
 ]
 
 # Interpretability tooling is INTENTIONALLY NOT in the default install.
