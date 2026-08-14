@@ -97,7 +97,7 @@ def main() -> int:
 
     anchors = build_anchors(task_endpoints(suite_dir))
 
-    from src.models.smolvla import SmolVLA, make_batch
+    from src.models.smolvla import SmolVLA, make_batch, pair_pad_length
 
     print(f"run_id     : {run_id}")
     print(f"checkpoint : {args.checkpoint}")
@@ -173,13 +173,18 @@ def main() -> int:
             ee = np.asarray(st["ee_pos"], dtype=np.float64)
             noise = model.make_noise(1)
 
+            instr_w = instruction_for(contrast["working_object"], dest)
+            instr_f = instruction_for(contrast["failing_object"], dest)
+            # 'longest'-padded checkpoints need the pair padded to a common length
+            # or cross-run patches fail on a token-dim mismatch (see pair_pad_length).
+            pad_len = pair_pad_length(model.policy, [instr_w, instr_f])
             batch_w = make_batch(
-                images, state_t, instruction_for(contrast["working_object"], dest),
-                model.policy, args.device,
+                images, state_t, instr_w, model.policy, args.device,
+                pad_to_length=pad_len,
             )
             batch_f = make_batch(
-                images, state_t, instruction_for(contrast["failing_object"], dest),
-                model.policy, args.device,
+                images, state_t, instr_f, model.policy, args.device,
+                pad_to_length=pad_len,
             )
 
             site_names = [s.name for s in sites]
