@@ -88,3 +88,15 @@ checkpoints come from one uploader).
 
 - OpenReview reviews for 2603.19233 (Cloudflare-blocked).
 - X/Twitter chatter (no direct search access; nothing surfaced via web).
+
+## Appendix: known structural debt (review pass, 2026-08-14)
+
+Two review findings are deferred deliberately, not forgotten. (1) run_localization
+and run_transplant share a ~55-line per-trial scaffold by copy; their comparability
+is enforced only by the copies staying in sync, and the right fix is one shared
+trial-builder helper. Deferred because the first real M2 sweep and M3 run are in
+flight on the current code; refactor before the next sweep, not during this one.
+(2) The resolved-config writer exists in four copies across scripts/. Same timing
+argument. (3) CLAUDE.md §10's target CLI takes --pairs; both runners instead use
+the three hardcoded CONTRASTS — a team decision to revisit, since the M3 verdict is
+currently measured on 3 contrasts, not the M1 stimulus set.
