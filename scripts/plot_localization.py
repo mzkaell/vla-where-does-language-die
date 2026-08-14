@@ -42,7 +42,10 @@ def site_table(data: dict):
     """-> (towers, components, layers, grid dicts) present in this run."""
     sites = data["sites"]
     towers = [t for t in TOWER_ORDER if any(s["tower"] == t for s in sites)]
-    comps = [c for c in COMPONENT_ORDER if any(s["component"] == c for s in sites)]
+    comps = [
+        c for c in COMPONENT_ORDER
+        if any(s["component"] == c and s["layer"] is not None for s in sites)
+    ]
     layers = sorted({s["layer"] for s in sites if s["layer"] is not None})
     return sites, towers, comps, layers
 
@@ -54,7 +57,9 @@ def plot_heatmap(data: dict, out: Path):
         1, len(towers), figsize=(1.8 + 0.55 * len(layers) * len(towers), 1.2 + 0.5 * len(comps)),
         squeeze=False,
     )
-    vmax = max(0.1, np.nanmax([abs(s["recovery"]["value"]) for s in sites if s["layer"] is not None]))
+    vals = [abs(s["recovery"]["value"]) for s in sites if s["layer"] is not None]
+    finite = [v for v in vals if np.isfinite(v)]
+    vmax = max(0.1, max(finite)) if finite else 0.1
     for ax, tower in zip(axes[0], towers, strict=False):
         grid = np.full((len(comps), len(layers)), np.nan)
         degen = np.zeros_like(grid, dtype=bool)
@@ -98,6 +103,8 @@ def plot_depth(data: dict, out: Path):
                 (s for s in sites if s["tower"] == tower and s["component"] == comp and s["layer"] is not None),
                 key=lambda s: s["layer"],
             ):
+                if s["degenerate"]:
+                    continue  # its recovery/CI are documented as meaningless
                 xs.append(s["layer"])
                 ys.append(s["recovery"]["value"])
                 los.append(s["recovery"]["lo"])
