@@ -30,7 +30,8 @@ from pathlib import Path
 import numpy as np
 import torch
 
-sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
+REPO_ROOT = Path(__file__).resolve().parent.parent
+sys.path.insert(0, str(REPO_ROOT))
 
 from scripts.reproduce_ifr import STATE_KEYS, build_images, build_state  # noqa: E402
 from scripts.run_composition import collect_states, task_endpoints  # noqa: E402
@@ -77,9 +78,9 @@ def main() -> int:
         pos = list(range(int(a), int(b)))
 
     run_id = args.run_id or f"m3_{args.extract_site.replace('.', '_')}"
-    out_dir = Path("results") / run_id
+    out_dir = REPO_ROOT / "results" / run_id
     out_dir.mkdir(parents=True, exist_ok=True)
-    suite_dir = Path(args.data_root) / args.suite
+    suite_dir = REPO_ROOT / args.data_root / args.suite
     np.random.seed(args.seed)
 
     anchors = build_anchors(task_endpoints(suite_dir))

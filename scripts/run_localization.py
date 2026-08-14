@@ -111,9 +111,15 @@ def main() -> int:
     sites = model.sites()
     if args.components:
         wanted = {c.strip() for c in args.components.split(",")}
+        known = {s.component for s in sites}
+        if wanted - known:
+            sys.exit(f"unknown component(s) {sorted(wanted - known)}; known: {sorted(known)}")
         sites = [s for s in sites if s.component in wanted]
     if args.towers:
         wanted_towers = {c.strip() for c in args.towers.split(",")}
+        known_towers = {s.tower for s in sites}
+        if wanted_towers - known_towers:
+            sys.exit(f"unknown tower(s) {sorted(wanted_towers - known_towers)}; known: {sorted(known_towers)}")
         sites = [s for s in sites if s.tower in wanted_towers]
     if args.sites_limit:
         sites = sites[: args.sites_limit]
