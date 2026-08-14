@@ -479,9 +479,15 @@ def language_token_positions(policy: Any, prefix_len: int, n_lang_tokens: int) -
     assert not policy.config.add_image_special_tokens, (
         "prefix layout assumes no image special tokens; recompute for this checkpoint"
     )
-    assert getattr(policy.config, "prefix_length", -1) == -1, (
-        "prefix_length padding appends AFTER the state token, so 'state is last' "
-        "would be false and this slice would silently shift; recompute for this checkpoint"
+    # lerobot pads the prefix AFTER the state token when its unpadded length is
+    # below config.prefix_length, which would make 'state is last' false. Padding
+    # can only have happened if the observed length equals the configured target
+    # (non-positive targets never pad; an observed length above the target was
+    # never padded), so that is the one case to refuse.
+    target = getattr(policy.config, "prefix_length", -1)
+    assert target <= 0 or prefix_len > target, (
+        f"prefix of {prefix_len} tokens may be padded to prefix_length={target}; "
+        "'state is last' no longer holds and this slice would silently shift"
     )
     end = prefix_len - 1  # the state token is last
     start = end - n_lang_tokens
