@@ -182,7 +182,24 @@ def main() -> int:
                 print(f"    trial {n_done}  ({per:.1f}s/trial, eta {per * todo / 60:.1f} min)",
                       flush=True)
 
-    # TODO: verdict aggregation lands in the next commit.
+    verdicts = [
+        judge(args.extract_site, inject, a, cosp[a], baselines_per_alpha[a],
+              seed=args.seed, min_trials=args.min_trials)
+        for a in alphas
+    ]
+
+    print("\n" + "=" * 60 + "\nM3 TRANSPLANT\n" + "=" * 60)
+    print(f"trials used {n_done}  skipped {skipped} (no headroom)")
+    for v in verdicts:
+        print(f"  alpha={v.alpha:<5} recovery {v.recovery_mean:+.3f} "
+              f"[{v.recovery_lo:+.3f},{v.recovery_hi:+.3f}]  n={v.n}  -> {v.verdict}")
+
+    (out_dir / "metrics.json").write_text(
+        json.dumps({"verdicts": [asdict(v) for v in verdicts],
+                    "n_trials_used": n_done, "n_skipped": skipped}, indent=2, default=str),
+        encoding="utf-8",
+    )
+    print(f"\nwritten -> {out_dir}")
     return 0
 
 
