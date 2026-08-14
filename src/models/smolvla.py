@@ -466,6 +466,26 @@ def pair_pad_length(policy: Any, instructions: Sequence[str]) -> int | None:
     return int(enc["input_ids"].shape[1])
 
 
+def language_token_positions(policy: Any, prefix_len: int, n_lang_tokens: int) -> list[int]:
+    """Positions of the language tokens inside a VLM prefix of `prefix_len` tokens.
+
+    lerobot 0.6.0 `embed_prefix` builds the prefix as [image tokens][language tokens]
+    [one state token], so the language block is the n_lang_tokens slice ending one
+    position before the end. Only valid with `add_image_special_tokens=False` (true of
+    every checkpoint this repo uses); with special tokens the image block grows by two
+    tokens per image and this arithmetic would silently point at the wrong slice, so
+    the assert is load-bearing.
+    """
+    assert not policy.config.add_image_special_tokens, (
+        "prefix layout assumes no image special tokens; recompute for this checkpoint"
+    )
+    end = prefix_len - 1  # the state token is last
+    start = end - n_lang_tokens
+    if start < 0:
+        raise ValueError(f"{n_lang_tokens} language tokens cannot fit in prefix of {prefix_len}")
+    return list(range(start, end))
+
+
 def make_batch(
     images: Tensor | Mapping[str, Tensor],
     state: Tensor,
