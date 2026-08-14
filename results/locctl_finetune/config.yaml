@@ -1,0 +1,14 @@
+run_id: "locctl_finetune"
+experiment: "M2_localization"
+checkpoint: "k1000dai/smolvla_libero_finetune"
+n_trials_per_contrast: 40
+n_sites: 130
+contrast_mode: "control"
+contrasts: [{"target": "the plate", "working": ["bowl", "the plate"], "failing": ["bowl", "the stove"]}, {"target": "the stove", "working": ["bowl", "the stove"], "failing": ["bowl", "the plate"]}, {"target": "the rack", "working": ["wine bottle", "the rack"], "failing": ["wine bottle", "top of the cabinet"]}]
+seed: 0
+fdr: 0.05
+device: "cuda"
+image_orientation: "rot180"
+state_composition: ["ee_pos", "ee_ori", "gripper_states"]
+platform: "Linux-6.17.0-1019-aws-x86_64-with-glibc2.39"
+torch: "2.11.0+cu130"
