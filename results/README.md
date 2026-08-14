@@ -18,6 +18,9 @@ before drawing conclusions from any single file here.
 | `comp_scratch80k` | Same, second checkpoint | **superseded** |
 | `fs_finetune` | Condition 3 with the **fixed-state control**, paired | **headline** |
 | `fs_scratch80k` | Same, second checkpoint | **headline — replication** |
+| `loc_full_mps` | **M2 full sweep**, 130 sites, n=40/contrast, MPS | **current** — graded VLM decay 0.73→0.00; diffuse; nothing clears BH |
+| `m3_L4_lang` / `m3_L4_all` | M3 transplant at vlm.L4, lang-only vs whole prefix | **current** — lang block carries ~all signal; partial doses hurt |
+| `m3_L0_lang` / `m3_L12_lang` | M3 lang-block transplant, depth pair | **current** — 0.74 at L0 → 0.37 at L12; decays with depth |
 | `_loc_smoke` | M2 smoke, CPU, first 8 sites, n=3 | **smoke only** — sizes the sweep, answers nothing |
 | `_loc_smoke_mps` | Same smoke on MPS | **smoke only** — same ranking; resid sites within 0.02, mlp up to 0.21; 24× faster |
 
@@ -30,7 +33,9 @@ uncontrolled measurement can inflate.
 
 ## Not present yet
 
-The full M2 sweep (`loc_*`) and the M3 binding transplant. The GPU assumption in earlier
+An M2 replication on the second checkpoint is running (resid sites, CPU); OpenVLA
+cross-architecture and closed-loop confirmation do not exist. Historical note kept
+for the record: this section previously said M2/M3 needed a GPU. The GPU assumption in earlier
 versions of this note is dead: MPS runs 24× faster than CPU, so the full 130-site, n=40 sweep
 costs ~3 h on an M-series laptop. Agreement, stated precisely (an earlier version of this
 note claimed a blanket "within 0.02", which the committed metrics contradict): site ranking
