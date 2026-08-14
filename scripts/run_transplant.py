@@ -114,7 +114,75 @@ def main() -> int:
         encoding="utf-8",
     )
 
-    # TODO: trial loop lands in the next commit; running now writes config only.
+    cosp: dict[float, list[float]] = {a: [] for a in alphas}
+    baselines_per_alpha: dict[float, list[TrialBaseline]] = {a: [] for a in alphas}
+    skipped = 0
+    t0, n_done = time.time(), 0
+
+    for contrast in CONTRASTS:
+        dest = contrast["destination"]
+        anchor = anchors[dest]
+        from src.eval.composition import OBJECT_SOURCE_TASKS
+
+        pooled = [t for ts in OBJECT_SOURCE_TASKS.values() for t in ts]
+        states = collect_states(suite_dir, pooled, args.n_trials, args.seed)[: args.n_trials]
+        print(f"\ncontrast: '{dest}'  ({len(states)} states)", flush=True)
+
+        for st in states:
+            obs = {k: st[k] for k in ("agentview_rgb", "eye_in_hand_rgb")}
+            obs |= {k: st[k] for k in STATE_KEYS}
+            images = build_images(obs, keys, size)
+            state_t = model.normalize_state(build_state(obs, sdim))
+            ee = np.asarray(st["ee_pos"], dtype=np.float64)
+            noise = model.make_noise(1)
+
+            instr_w = instruction_for(contrast["working_object"], dest)
+            instr_f = instruction_for(contrast["failing_object"], dest)
+            pad_len = pair_pad_length(model.policy, [instr_w, instr_f])
+            batch_w = make_batch(images, state_t, instr_w, model.policy, args.device,
+                                 pad_to_length=pad_len)
+            batch_f = make_batch(images, state_t, instr_f, model.policy, args.device,
+                                 pad_to_length=pad_len)
+
+            run_w = model.forward_with_cache(batch_w, sites=[args.extract_site], noise=noise)
+            run_f = model.forward_with_cache(batch_f, sites=[args.extract_site], noise=noise)
+
+            cos_w = direction_cosine(net_translation(model.unnormalize_action(run_w.action)), ee, anchor)
+            cos_f = direction_cosine(net_translation(model.unnormalize_action(run_f.action)), ee, anchor)
+            base = TrialBaseline(
+                trial_id=f"{st['task']}__{st['demo']}__t{st['t']}__{dest}",
+                cos_working=cos_w, cos_failing=cos_f, headroom=cos_w - cos_f,
+                ee_pos=ee, anchor=anchor,
+            )
+            if not base.usable:
+                skipped += 1
+                continue
+
+            deltas = [
+                binding_delta(w, f)
+                for w, f in zip(run_w.occurrences(args.extract_site),
+                                run_f.occurrences(args.extract_site), strict=True)
+            ]
+            if pos is not None:
+                deltas = [restrict_to_positions(d, pos) for d in deltas]
+
+            for alpha in alphas:
+                patched = model.patch(batch_f, patches={inject: dosed_patch(deltas, alpha)},
+                                      noise=noise)
+                c = direction_cosine(
+                    net_translation(model.unnormalize_action(patched.action)), ee, anchor
+                )
+                cosp[alpha].append(c)
+                baselines_per_alpha[alpha].append(base)
+
+            n_done += 1
+            if n_done == 1 or n_done % 5 == 0:
+                per = (time.time() - t0) / n_done
+                todo = len(CONTRASTS) * len(states) - n_done
+                print(f"    trial {n_done}  ({per:.1f}s/trial, eta {per * todo / 60:.1f} min)",
+                      flush=True)
+
+    # TODO: verdict aggregation lands in the next commit.
     return 0
 
 
