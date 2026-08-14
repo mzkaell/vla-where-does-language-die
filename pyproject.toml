@@ -32,8 +32,15 @@ dependencies = [
 [project.optional-dependencies]
 # SmolVLA policy + LeRobot runtime. Kept separate from the base install so the
 # metric/stat tests can run without pulling the full robotics stack.
+# PINNED, not a lower bound. src/models/smolvla.py re-implements
+# SmolVLMWithExpertModel.forward to expose the residual stream, and that
+# re-implementation calls forward_attn_layer/forward_cross_attn_layer with
+# lerobot 0.6.0's signature. A newer lerobot changed it -- 0.6.1+ drops the
+# fill_kv_cache kwarg -- which raises a TypeError deep inside the forward pass.
+# Every result in results/ was produced on 0.6.0, so the pin is also what makes
+# them reproducible.
 vla = [
-    "lerobot[smolvla]>=0.6.0",
+    "lerobot[smolvla]==0.6.0",
 ]
 
 # Interpretability tooling is INTENTIONALLY NOT in the default install.

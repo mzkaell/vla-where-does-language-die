@@ -103,6 +103,7 @@ class SmolVLA(VLAModel):
         noise_seed: int = DEFAULT_NOISE_SEED,
         **kwargs: Any,
     ) -> SmolVLA:
+        _check_lerobot_version()
         from lerobot.policies.smolvla.modeling_smolvla import SmolVLAPolicy
 
         policy = SmolVLAPolicy.from_pretrained(checkpoint, **kwargs)
@@ -384,6 +385,59 @@ class SmolVLA(VLAModel):
             out_emb = models[i].norm(hidden_states)
             final.append(taps.tap(f"{_TOWERS[i]}.final_norm", out_emb))
         return final, past_key_values
+
+
+SUPPORTED_LEROBOT = "0.6.0"
+
+
+def _check_lerobot_version() -> None:
+    """Fail early and legibly if lerobot's internal API has drifted.
+
+    `_tapped_forward` calls `forward_attn_layer` / `forward_cross_attn_layer` with
+    lerobot 0.6.0's signature. Later versions changed it (0.6.1+ drops `fill_kv_cache`),
+    which otherwise surfaces as
+
+        TypeError: forward_attn_layer() got an unexpected keyword argument 'fill_kv_cache'
+
+    thrown from inside the denoising loop, where the cause is not obvious. Checking here
+    turns that into one actionable line. Every committed result was produced on 0.6.0, so
+    this also guards reproducibility, not just the crash.
+    """
+    import warnings
+    from importlib.metadata import PackageNotFoundError, version
+
+    try:
+        found = version("lerobot")
+    except PackageNotFoundError:
+        return
+    if found == SUPPORTED_LEROBOT:
+        return
+
+    # Probe the signature rather than trusting the version string alone -- a fork or a
+    # patched install may report an unexpected version yet still be compatible.
+    try:
+        import inspect
+
+        from lerobot.policies.smolvla.smolvlm_with_expert import SmolVLMWithExpertModel
+
+        params = inspect.signature(SmolVLMWithExpertModel.forward_attn_layer).parameters
+        if "fill_kv_cache" in params:
+            warnings.warn(
+                f"lerobot {found} != pinned {SUPPORTED_LEROBOT}, but the instrumented "
+                "forward's signature still matches. Proceeding.",
+                stacklevel=2,
+            )
+            return
+    except Exception:
+        pass
+
+    raise RuntimeError(
+        f"lerobot {found} is installed but this code requires {SUPPORTED_LEROBOT}.\n"
+        "src/models/smolvla.py re-implements SmolVLMWithExpertModel.forward to expose the\n"
+        "residual stream, against 0.6.0's internal signature. Newer versions changed it.\n\n"
+        f"Fix:  pip install 'lerobot[smolvla]=={SUPPORTED_LEROBOT}'\n\n"
+        "All committed results were produced on that version."
+    )
 
 
 # ------------------------------------------------------------ normalization stats
