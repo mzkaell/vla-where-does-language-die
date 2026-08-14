@@ -1,0 +1,42 @@
+{
+  "verdicts": [
+    {
+      "extract_site": "vlm.L4.resid_post",
+      "inject_site": "vlm.L4.resid_post",
+      "alpha": 0.25,
+      "n": 42,
+      "recovery_mean": -0.8724229844690196,
+      "recovery_lo": -1.6122248056515254,
+      "recovery_hi": -0.2720063334864839,
+      "verdict": "not-readout",
+      "degenerate": false,
+      "n_dropped_nonfinite": 0
+    },
+    {
+      "extract_site": "vlm.L4.resid_post",
+      "inject_site": "vlm.L4.resid_post",
+      "alpha": 0.5,
+      "n": 42,
+      "recovery_mean": -0.7977463812163984,
+      "recovery_lo": -1.4576265384575444,
+      "recovery_hi": -0.21817485421100022,
+      "verdict": "not-readout",
+      "degenerate": false,
+      "n_dropped_nonfinite": 0
+    },
+    {
+      "extract_site": "vlm.L4.resid_post",
+      "inject_site": "vlm.L4.resid_post",
+      "alpha": 1.0,
+      "n": 42,
+      "recovery_mean": 0.5944416962958335,
+      "recovery_lo": 0.41057023333319315,
+      "recovery_hi": 0.7594792155762325,
+      "verdict": "indeterminate",
+      "degenerate": false,
+      "n_dropped_nonfinite": 0
+    }
+  ],
+  "n_trials_used": 42,
+  "n_skipped": 18
+}

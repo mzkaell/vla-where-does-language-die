@@ -1,0 +1,18 @@
+run_id: "m3_L4_all"
+experiment: "M3_transplant"
+checkpoint: "k1000dai/smolvla_libero_finetune"
+extract_site: "vlm.L4.resid_post"
+inject_site: "vlm.L4.resid_post"
+alphas: [0.25, 0.5, 1.0]
+positions: null
+n_trials_per_contrast: 20
+contrasts: [{"destination": "the rack", "working_object": "wine bottle", "failing_object": "bowl"}, {"destination": "the plate", "working_object": "bowl", "failing_object": "wine bottle"}, {"destination": "the stove", "working_object": "bowl", "failing_object": "wine bottle"}]
+suite: "libero_goal"
+data_root: "/private/tmp/vla-lang-die/data/libero"
+min_trials: 5
+seed: 0
+device: "mps"
+image_orientation: "rot180"
+state_composition: ["ee_pos", "ee_ori", "gripper_states"]
+platform: "macOS-15.6.1-arm64-arm-64bit"
+torch: "2.11.0"
