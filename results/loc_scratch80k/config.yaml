@@ -3,7 +3,8 @@ experiment: "M2_localization"
 checkpoint: "k1000dai/smolvla_libero_scratch_80k"
 n_trials_per_contrast: 40
 n_sites: 130
-contrasts: [{"destination": "the rack", "working_object": "wine bottle", "failing_object": "bowl"}, {"destination": "the plate", "working_object": "bowl", "failing_object": "wine bottle"}, {"destination": "the stove", "working_object": "bowl", "failing_object": "wine bottle"}]
+contrast_mode: "novel"
+contrasts: [{"target": "the rack", "working": ["wine bottle", "the rack"], "failing": ["bowl", "the rack"]}, {"target": "the plate", "working": ["bowl", "the plate"], "failing": ["wine bottle", "the plate"]}, {"target": "the stove", "working": ["bowl", "the stove"], "failing": ["wine bottle", "the stove"]}]
 seed: 0
 fdr: 0.05
 device: "cuda"
