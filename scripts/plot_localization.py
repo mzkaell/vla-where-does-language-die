@@ -57,7 +57,14 @@ def plot_heatmap(data: dict, out: Path):
         1, len(towers), figsize=(1.8 + 0.55 * len(layers) * len(towers), 1.2 + 0.5 * len(comps)),
         squeeze=False,
     )
-    vals = [abs(s["recovery"]["value"]) for s in sites if s["layer"] is not None]
+    # degenerate sites' recoveries are documented as meaningless and can be huge
+    # (headroom floor 0.05 admits |recovery| ~ 40); one such value would flatten
+    # every real cell to near-white, so they set neither the scale nor a cell
+    vals = [
+        abs(s["recovery"]["value"])
+        for s in sites
+        if s["layer"] is not None and not s["degenerate"]
+    ]
     finite = [v for v in vals if np.isfinite(v)]
     vmax = max(0.1, max(finite)) if finite else 0.1
     for ax, tower in zip(axes[0], towers, strict=False):
@@ -103,12 +110,15 @@ def plot_depth(data: dict, out: Path):
                 (s for s in sites if s["tower"] == tower and s["component"] == comp and s["layer"] is not None),
                 key=lambda s: s["layer"],
             ):
-                if s["degenerate"]:
-                    continue  # its recovery/CI are documented as meaningless
                 xs.append(s["layer"])
-                ys.append(s["recovery"]["value"])
-                los.append(s["recovery"]["lo"])
-                his.append(s["recovery"]["hi"])
+                if s["degenerate"]:
+                    # NaN breaks the line: a silent skip would bridge straight
+                    # across the one layer where the number is meaningless
+                    ys.append(float("nan")); los.append(float("nan")); his.append(float("nan"))
+                else:
+                    ys.append(s["recovery"]["value"])
+                    los.append(s["recovery"]["lo"])
+                    his.append(s["recovery"]["hi"])
             if not xs:
                 continue
             (line,) = ax.plot(xs, ys, marker="o", ms=3, label=comp)
