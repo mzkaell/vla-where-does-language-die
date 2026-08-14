@@ -7,6 +7,8 @@ Writes two figures next to the metrics file:
                              Cell value = mean recovery; significant-after-BH
                              cells get a dot. Grey = degenerate (headroom too
                              small to score, per the sensitivity trap rule).
+  localization_depth.png     recovery vs layer, one line per component, one
+                             panel per tower, bootstrap CI band.
 
 Both figures state n (trials) and the null size in the caption strip, because a
 map without its evidence budget invites over-reading.
@@ -85,13 +87,44 @@ def plot_heatmap(data: dict, out: Path):
     plt.close(fig)
 
 
+def plot_depth(data: dict, out: Path):
+    sites, towers, comps, layers = site_table(data)
+    n_trials = data["summary"].get("n_trials_used", "?")
+    fig, axes = plt.subplots(1, len(towers), figsize=(5.2 * len(towers), 3.4), squeeze=False, sharey=True)
+    for ax, tower in zip(axes[0], towers, strict=False):
+        for comp in comps:
+            xs, ys, los, his = [], [], [], []
+            for s in sorted(
+                (s for s in sites if s["tower"] == tower and s["component"] == comp and s["layer"] is not None),
+                key=lambda s: s["layer"],
+            ):
+                xs.append(s["layer"])
+                ys.append(s["recovery"]["value"])
+                los.append(s["recovery"]["lo"])
+                his.append(s["recovery"]["hi"])
+            if not xs:
+                continue
+            (line,) = ax.plot(xs, ys, marker="o", ms=3, label=comp)
+            ax.fill_between(xs, los, his, alpha=0.15, color=line.get_color())
+        ax.axhline(0, color="0.6", lw=0.8)
+        ax.set_title(f"{tower} tower")
+        ax.set_xlabel("layer")
+    axes[0][0].set_ylabel("recovery")
+    axes[0][0].legend(fontsize=8)
+    fig.suptitle(f"M2 recovery vs depth  (n={n_trials} trials, band = bootstrap CI)", fontsize=10)
+    fig.savefig(out, dpi=200, bbox_inches="tight")
+    plt.close(fig)
+
+
 def main():
     ap = argparse.ArgumentParser(description=__doc__)
     ap.add_argument("results_dir", type=Path)
     args = ap.parse_args()
     data = load(args.results_dir)
     plot_heatmap(data, args.results_dir / "localization_heatmap.png")
+    plot_depth(data, args.results_dir / "localization_depth.png")
     print(f"wrote -> {args.results_dir}/localization_heatmap.png")
+    print(f"wrote -> {args.results_dir}/localization_depth.png")
 
 
 if __name__ == "__main__":
