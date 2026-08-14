@@ -72,6 +72,10 @@ def main() -> int:
         # returns plausible-looking garbage positions, not an error
         sys.exit("--positions lang is only defined for vlm.* extract sites")
     alphas = [float(a) for a in args.alphas.split(",")]
+    if len(set(alphas)) != len(alphas):
+        # duplicates double-append every trial for that alpha: pseudo-replication
+        # that narrows the bootstrap CI and can flip 'indeterminate' to 'readout'
+        sys.exit(f"duplicate alphas in {alphas}")
     pos = None
     if args.positions and args.positions != "lang":
         a, b = args.positions.split(":")

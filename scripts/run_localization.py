@@ -109,19 +109,26 @@ def main() -> int:
     sdim = cfg.robot_state_feature.shape[0]
 
     sites = model.sites()
+    # names validate against the model's FULL site table, not the residue of an
+    # earlier filter -- otherwise a valid tower name can be refused as "unknown"
+    # just because the component filter emptied it first
+    known_components = {s.component for s in sites}
+    known_towers = {s.tower for s in sites}
     if args.components:
         wanted = {c.strip() for c in args.components.split(",")}
-        known = {s.component for s in sites}
-        if wanted - known:
-            sys.exit(f"unknown component(s) {sorted(wanted - known)}; known: {sorted(known)}")
+        if wanted - known_components:
+            sys.exit(f"unknown component(s) {sorted(wanted - known_components)}; "
+                     f"known: {sorted(known_components)}")
         sites = [s for s in sites if s.component in wanted]
     if args.towers:
         wanted_towers = {c.strip() for c in args.towers.split(",")}
-        known_towers = {s.tower for s in sites}
         if wanted_towers - known_towers:
-            sys.exit(f"unknown tower(s) {sorted(wanted_towers - known_towers)}; known: {sorted(known_towers)}")
+            sys.exit(f"unknown tower(s) {sorted(wanted_towers - known_towers)}; "
+                     f"known: {sorted(known_towers)}")
         sites = [s for s in sites if s.tower in wanted_towers]
-    if args.sites_limit:
+    if not sites:
+        sys.exit("the filter combination selects zero sites")
+    if args.sites_limit is not None:
         sites = sites[: args.sites_limit]
     print(f"sites      : {len(sites)}   norm stats: {model.has_norm_stats}")
 
