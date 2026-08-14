@@ -93,6 +93,21 @@ for spec in "locctl_finetune:$CKPT_A" "locctl_scratch80k:$CKPT_B"; do
   save "M2 proximity control: $rid"
 done
 
+# ----------------------------------------------------------- destination probe
+# Answers the encoding-vs-readout question the patching sweep could not. Probing is
+# correlational, so it is unaffected by the causal-proximity confound that made the sweep
+# uninterpretable -- a different failure mode, which is the point.
+if [[ -f scripts/run_probe.py ]]; then
+  for spec in "probe_finetune:$CKPT_A" "probe_scratch80k:$CKPT_B"; do
+    rid="${spec%%:*}"; ckpt="${spec##*:}"
+    if stage_done "$rid"; then echo "skip $rid"; continue; fi
+    say "Destination probe: $rid"
+    git pull --rebase -q 2>/dev/null
+    $PY scripts/run_probe.py --checkpoint "$ckpt" --device "$DEVICE"         --n-states 60 --run-id "$rid"
+    save "Destination probe: $rid"
+  done
+fi
+
 # --------------------------------------- position-resolved + M3 (if available)
 # These are pushed from the laptop mid-session; the pull above picks them up.
 git pull --rebase -q 2>/dev/null
