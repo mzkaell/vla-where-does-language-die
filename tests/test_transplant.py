@@ -9,7 +9,7 @@ import torch
 
 from src.interp.localization import TrialBaseline
 from src.interp.transplant import (
-    additive_patch,
+    dosed_patch,
     binding_delta,
     judge,
     restrict_to_positions,
@@ -25,8 +25,14 @@ def _base(cw=1.0, cf=0.0, i=0):
 
 def test_delta_plus_failing_reconstructs_working():
     w, f = torch.randn(1, 5, 8), torch.randn(1, 5, 8)
-    patched = additive_patch(binding_delta(w, f), alpha=1.0)(f, 0)
-    assert torch.allclose(patched, w)  # alpha=1 same-site == M2's full patch
+    patched = dosed_patch([binding_delta(w, f)], alpha=1.0)(f, 0)
+    assert torch.allclose(patched, w)  # alpha=1 same-site == M2 (vlm sites only)
+
+
+def test_dosed_patch_refuses_to_recycle_deltas():
+    d = [torch.zeros(1, 5, 8)]
+    with pytest.raises(IndexError, match="only 1 deltas cached"):
+        dosed_patch(d)(torch.zeros(1, 5, 8), 1)
 
 
 def test_delta_refuses_mismatched_lengths():

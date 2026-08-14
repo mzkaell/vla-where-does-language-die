@@ -8,9 +8,13 @@ the stream feeding the action expert (encoding failure), or present but unread
 The test: extract the binding as the working-minus-failing difference at the extraction
 site, then inject it additively into the failing run — optionally at a *different* site
 (extract from the VLM stream, inject at the expert input), optionally restricted to the
-language-token positions, and at a controlled dose `alpha`. At alpha=1, same-site,
-all-positions, this reduces exactly to M2's full patch; every departure from that
-corner is what makes it a transplant rather than a re-run.
+language-token positions, and at a controlled dose `alpha`.
+
+At alpha=1, same-site, all-positions, this reduces exactly to M2's full patch — but only
+for vlm.* sites, which fire once. Expert sites fire once per denoising step with state
+feedback: the step-0 injection changes the trajectory, so at steps 1..9 the stream no
+longer equals the failing run's and old + (w_k - f_k) != w_k. On expert sites the
+alpha=1 number is a genuinely different quantity from M2's recovery, not a sanity check.
 
 Verdict rule (CLAUDE.md §8): **readout** if mean recovery ≥ 0.5 of the working-minus-
 failing gap. The rule is stated on the recovery defined in localization.py, so the two
@@ -53,15 +57,24 @@ def restrict_to_positions(delta: Tensor, positions: list[int]) -> Tensor:
     return out
 
 
-def additive_patch(delta: Tensor, alpha: float = 1.0):
-    """A patch callable for forward_with_cache: old + alpha * delta, at every firing."""
+def dosed_patch(deltas: list[Tensor], alpha: float = 1.0):
+    """A patch callable for forward_with_cache: old + alpha * deltas[k] at firing k.
+
+    Takes one delta per firing and refuses to recycle: silently re-injecting step-0's
+    delta at steps 1..9 of an expert site is exactly the bug this signature prevents.
+    """
 
     def _patch(old: Tensor, index: int) -> Tensor:
-        if delta.shape != old.shape:
-            raise ValueError(
-                f"delta shape {tuple(delta.shape)} != activation shape {tuple(old.shape)}"
+        if index >= len(deltas):
+            raise IndexError(
+                f"site fired {index + 1} times but only {len(deltas)} deltas cached"
             )
-        return old + alpha * delta.to(dtype=old.dtype, device=old.device)
+        d = deltas[index]
+        if d.shape != old.shape:
+            raise ValueError(
+                f"delta shape {tuple(d.shape)} != activation shape {tuple(old.shape)}"
+            )
+        return old + alpha * d.to(dtype=old.dtype, device=old.device)
 
     return _patch
 
