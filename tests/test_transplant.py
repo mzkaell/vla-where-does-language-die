@@ -48,33 +48,48 @@ def test_position_restriction_touches_only_named_positions():
         restrict_to_positions(d, [])
 
 
+DISP_OK = [1.0] * 8  # comfortably above the degeneracy floor
+
+
 def test_full_recovery_reads_readout():
     baselines = [_base(i=i) for i in range(8)]
-    v = judge("vlm.L8.resid_post", "expert.L0.resid_pre", 1.0, [1.0] * 8, baselines)
+    v = judge("vlm.L8.resid_post", "expert.L0.resid_pre", 1.0, [1.0] * 8, baselines, DISP_OK)
     assert v.verdict == "readout" and v.n == 8
+
+
+def test_degenerate_displacement_forces_indeterminate():
+    baselines = [_base(i=i) for i in range(8)]
+    v = judge("s", "s", 1.0, [1.0] * 8, baselines, [1e-5] * 8)
+    assert v.verdict == "indeterminate" and v.degenerate
+
+
+def test_nonfinite_recoveries_are_counted():
+    baselines = [_base(i=i) for i in range(8)]
+    v = judge("s", "s", 1.0, [1.0] * 6 + [float("nan")] * 2, baselines, DISP_OK)
+    assert v.n == 6 and v.n_dropped_nonfinite == 2
 
 
 def test_no_recovery_reads_not_readout():
     baselines = [_base(i=i) for i in range(8)]
-    v = judge("s", "s", 1.0, [0.0] * 8, baselines)
+    v = judge("s", "s", 1.0, [0.0] * 8, baselines, DISP_OK)
     assert v.verdict == "not-readout"
 
 
 def test_straddling_ci_is_indeterminate():
     # recoveries alternating around the threshold -> CI straddles 0.5
     baselines = [_base(i=i) for i in range(8)]
-    v = judge("s", "s", 1.0, [0.1, 0.9] * 4, baselines)
+    v = judge("s", "s", 1.0, [0.1, 0.9] * 4, baselines, DISP_OK)
     assert v.verdict == "indeterminate"
 
 
 def test_too_few_trials_never_claims():
     baselines = [_base(i=i) for i in range(3)]
-    v = judge("s", "s", 1.0, [1.0] * 3, baselines)
+    v = judge("s", "s", 1.0, [1.0] * 3, baselines, [1.0] * 3)
     assert v.verdict == "indeterminate" and np.isnan(v.recovery_mean)
 
 
 def test_unusable_trials_are_excluded():
     # headroom below the usability floor must not count toward n
     baselines = [_base(i=i) for i in range(5)] + [_base(cw=0.01, cf=0.0, i=9)]
-    v = judge("s", "s", 1.0, [1.0] * 6, baselines)
+    v = judge("s", "s", 1.0, [1.0] * 6, baselines, [1.0] * 6)
     assert v.n == 5

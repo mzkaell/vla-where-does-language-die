@@ -112,6 +112,7 @@ def main() -> int:
 
     cosp: dict[float, list[float]] = {a: [] for a in alphas}
     baselines_per_alpha: dict[float, list[TrialBaseline]] = {a: [] for a in alphas}
+    disp_per_alpha: dict[float, list[float]] = {a: [] for a in alphas}
     skipped = 0
     t0, n_done = time.time(), 0
 
@@ -172,11 +173,10 @@ def main() -> int:
             for alpha in alphas:
                 patched = model.patch(batch_f, patches={inject: dosed_patch(deltas, alpha)},
                                       noise=noise)
-                c = direction_cosine(
-                    net_translation(model.unnormalize_action(patched.action)), ee, anchor
-                )
-                cosp[alpha].append(c)
+                d = net_translation(model.unnormalize_action(patched.action))
+                cosp[alpha].append(direction_cosine(d, ee, anchor))
                 baselines_per_alpha[alpha].append(base)
+                disp_per_alpha[alpha].append(float(np.linalg.norm(d)))
 
             n_done += 1
             if n_done == 1 or n_done % 5 == 0:
@@ -187,15 +187,17 @@ def main() -> int:
 
     verdicts = [
         judge(args.extract_site, inject, a, cosp[a], baselines_per_alpha[a],
-              seed=args.seed, min_trials=args.min_trials)
+              disp_per_alpha[a], seed=args.seed, min_trials=args.min_trials)
         for a in alphas
     ]
 
     print("\n" + "=" * 60 + "\nM3 TRANSPLANT\n" + "=" * 60)
     print(f"trials used {n_done}  skipped {skipped} (no headroom)")
     for v in verdicts:
+        flags = " DEGENERATE" if v.degenerate else ""
+        flags += f" dropped={v.n_dropped_nonfinite}" if v.n_dropped_nonfinite else ""
         print(f"  alpha={v.alpha:<5} recovery {v.recovery_mean:+.3f} "
-              f"[{v.recovery_lo:+.3f},{v.recovery_hi:+.3f}]  n={v.n}  -> {v.verdict}")
+              f"[{v.recovery_lo:+.3f},{v.recovery_hi:+.3f}]  n={v.n}  -> {v.verdict}{flags}")
 
     (out_dir / "metrics.json").write_text(
         json.dumps({"verdicts": [asdict(v) for v in verdicts],

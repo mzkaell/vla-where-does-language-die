@@ -28,7 +28,7 @@ from dataclasses import dataclass
 import numpy as np
 from torch import Tensor
 
-from src.interp.localization import TrialBaseline, recovery_fraction
+from src.interp.localization import MIN_DISPLACEMENT, TrialBaseline, recovery_fraction
 
 READOUT_THRESHOLD = 0.5
 
@@ -91,6 +91,8 @@ class TransplantVerdict:
     recovery_lo: float
     recovery_hi: float
     verdict: str  # "readout" | "not-readout" | "indeterminate"
+    degenerate: bool = False  # injection collapsed motion; direction is noise
+    n_dropped_nonfinite: int = 0  # trials whose recovery went NaN and left `n`
 
 
 def judge(
@@ -99,6 +101,7 @@ def judge(
     alpha: float,
     cos_patched: list[float],
     baselines: list[TrialBaseline],
+    displacements: list[float],
     resamples: int = 10_000,
     seed: int = 0,
     min_trials: int = 5,
@@ -106,7 +109,11 @@ def judge(
     """Aggregate per-trial recoveries into a verdict with a bootstrap CI.
 
     "readout" needs the whole CI above the threshold, not just the mean — a verdict is
-    a claim, and a claim whose interval straddles the rule is "indeterminate".
+    a claim, and a claim whose interval straddles the rule is "indeterminate". Two
+    guards mirror aggregate_site: the sensitivity trap (an injection that collapses
+    commanded motion has no direction to score, so a degenerate median displacement
+    forces "indeterminate"), and NaN recoveries are counted, not silently dropped —
+    trials vanishing at high alpha is itself evidence the dose is off-distribution.
     """
     from src.eval.stats import bootstrap_mean
 
@@ -114,11 +121,15 @@ def judge(
         [recovery_fraction(c, b) for c, b in zip(cos_patched, baselines, strict=True) if b.usable],
         dtype=np.float64,
     )
+    n_dropped = int(np.sum(~np.isfinite(r)))
     r = r[np.isfinite(r)]
-    if r.size < min_trials:
+    disp = np.array(displacements, dtype=np.float64)
+    degenerate = bool(disp.size and np.median(disp) < MIN_DISPLACEMENT * 10)
+    if degenerate or r.size < min_trials:
         return TransplantVerdict(
             extract_site, inject_site, alpha, int(r.size),
             float("nan"), float("nan"), float("nan"), "indeterminate",
+            degenerate, n_dropped,
         )
     est = bootstrap_mean(r, resamples=resamples, seed=seed)
     if est.lo >= READOUT_THRESHOLD:
@@ -128,5 +139,6 @@ def judge(
     else:
         verdict = "indeterminate"
     return TransplantVerdict(
-        extract_site, inject_site, alpha, int(r.size), est.value, est.lo, est.hi, verdict
+        extract_site, inject_site, alpha, int(r.size), est.value, est.lo, est.hi, verdict,
+        degenerate, n_dropped,
     )
