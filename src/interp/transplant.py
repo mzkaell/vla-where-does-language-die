@@ -64,3 +64,56 @@ def additive_patch(delta: Tensor, alpha: float = 1.0):
         return old + alpha * delta.to(dtype=old.dtype, device=old.device)
 
     return _patch
+
+
+@dataclass
+class TransplantVerdict:
+    """The M3 outcome for one (extract site, inject site, alpha) configuration."""
+
+    extract_site: str
+    inject_site: str
+    alpha: float
+    n: int
+    recovery_mean: float
+    recovery_lo: float
+    recovery_hi: float
+    verdict: str  # "readout" | "not-readout" | "indeterminate"
+
+
+def judge(
+    extract_site: str,
+    inject_site: str,
+    alpha: float,
+    cos_patched: list[float],
+    baselines: list[TrialBaseline],
+    resamples: int = 10_000,
+    seed: int = 0,
+    min_trials: int = 5,
+) -> TransplantVerdict:
+    """Aggregate per-trial recoveries into a verdict with a bootstrap CI.
+
+    "readout" needs the whole CI above the threshold, not just the mean — a verdict is
+    a claim, and a claim whose interval straddles the rule is "indeterminate".
+    """
+    from src.eval.stats import bootstrap_mean
+
+    r = np.array(
+        [recovery_fraction(c, b) for c, b in zip(cos_patched, baselines, strict=True) if b.usable],
+        dtype=np.float64,
+    )
+    r = r[np.isfinite(r)]
+    if r.size < min_trials:
+        return TransplantVerdict(
+            extract_site, inject_site, alpha, int(r.size),
+            float("nan"), float("nan"), float("nan"), "indeterminate",
+        )
+    est = bootstrap_mean(r, resamples=resamples, seed=seed)
+    if est.lo >= READOUT_THRESHOLD:
+        verdict = "readout"
+    elif est.hi < READOUT_THRESHOLD:
+        verdict = "not-readout"
+    else:
+        verdict = "indeterminate"
+    return TransplantVerdict(
+        extract_site, inject_site, alpha, int(r.size), est.value, est.lo, est.hi, verdict
+    )
