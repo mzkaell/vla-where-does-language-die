@@ -40,29 +40,79 @@ from src.interp.transplant import (  # noqa: E402
     verdict,
 )
 
+# Sites whose "recovery" is tautological rather than informative.
+#
+# The first sweep made this concrete: expert.L15.resid_post and expert.final_norm both
+# scored recovery 1.000 with ZERO variance. That is not localization -- the action is
+# computed almost directly from the last expert residual, so patching it replaces the
+# output wholesale. It is a useful positive control (it confirms the patching machinery
+# works end to end) but selecting it as a transplant target would manufacture a confident
+# READOUT verdict out of an identity.
+#
+# The mirror case sits at the input: patching the first VLM residual is close to swapping
+# the instruction embedding itself, so high recovery there is near-definitional too.
+TRIVIAL_TAIL_LAYERS = 1  # expert layers within this many of the last
+TRIVIAL_HEAD_LAYERS = 1  # vlm layers within this many of the first
+TAUTOLOGY_RECOVERY = 0.98
+
+
+def is_trivial_site(s: dict, n_layers: int = 16) -> str | None:
+    """Reason string if this site's recovery is definitional, else None."""
+    tower, layer, comp = s.get("tower"), s.get("layer"), s.get("component")
+    r = s.get("recovery", {}).get("value")
+    if comp == "final_norm":
+        return "final norm: patching it replaces the output"
+    if tower == "expert" and layer is not None and layer >= n_layers - 1 - TRIVIAL_TAIL_LAYERS:
+        return f"expert layer {layer} sits at the output; recovery is near-definitional"
+    if tower == "vlm" and layer is not None and layer <= TRIVIAL_HEAD_LAYERS:
+        return f"vlm layer {layer} sits at the input; patching ~ swapping the instruction"
+    if r is not None and np.isfinite(r) and r >= TAUTOLOGY_RECOVERY:
+        return f"recovery {r:.3f} is at ceiling; indistinguishable from overwriting the output"
+    return None
+
 
 def pick_target_site(explicit: str | None, prefer: str = "expert") -> tuple[str, str]:
-    """Use M2's strongest site unless told otherwise. Returns (site, provenance)."""
+    """M2's strongest NON-TRIVIAL site, with a loud warning if the sweep found nothing.
+
+    Refuses to silently transplant into a site the sweep could not distinguish from its
+    own null.
+    """
     if explicit:
         return explicit, "specified on the command line"
 
-    best, best_run, best_val = None, None, -np.inf
+    best, best_run, best_val, best_sig = None, None, -np.inf, False
+    any_significant = False
     for m in sorted((REPO_ROOT / "results").glob("loc_*/metrics.json")):
         data = json.loads(m.read_text())
         for s in data.get("sites", []):
             r = s.get("recovery", {}).get("value")
             if r is None or not np.isfinite(r) or s.get("degenerate"):
                 continue
+            if is_trivial_site(s):
+                continue
+            any_significant |= bool(s.get("significant_fdr"))
             # The hypothesis is about the VLM->expert interface, so prefer expert-side
             # sites when they are competitive; fall back to the global best otherwise.
             score = r + (0.05 if s.get("tower") == prefer else 0.0)
             if score > best_val:
                 best, best_run, best_val = s["site"], m.parent.name, r
+                best_sig = bool(s.get("significant_fdr"))
+
     if best is None:
         raise SystemExit(
-            "No M2 results to target. Run scripts/run_localization.py first, or pass --site."
+            "No usable M2 target: no sweep has run, or every candidate was trivial "
+            "(output- or input-adjacent). Run scripts/run_localization.py, or pass --site."
         )
-    return best, f"top site from {best_run} (recovery {best_val:+.3f})"
+    if not any_significant:
+        print(
+            "\n!! WARNING: no site in the M2 sweep survived Benjamini-Hochberg correction.\n"
+            f"!! Targeting {best} on point estimate alone. Any verdict below is PROVISIONAL\n"
+            "!! and must not be reported as a localization result.\n",
+            file=sys.stderr,
+        )
+    prov = f"top non-trivial site from {best_run} (recovery {best_val:+.3f}"
+    prov += ", BH-significant)" if best_sig else ", NOT BH-significant)"
+    return best, prov
 
 
 def main() -> int:
