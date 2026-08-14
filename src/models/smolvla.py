@@ -444,12 +444,35 @@ def load_norm_stats(checkpoint: str, device: str = "cpu") -> dict[str, Tensor]:
 # ---------------------------------------------------------------- input building
 
 
+def pair_pad_length(policy: Any, instructions: Sequence[str]) -> int | None:
+    """Common token length for a set of instructions that will be patched across.
+
+    Cross-run patching needs equal prefix lengths. Checkpoints that pad language to
+    a fixed `tokenizer_max_length` already have them; checkpoints trained with
+    `pad_language_to='longest'` do not, and forcing them to the fixed length is NOT
+    behaviour-neutral (measured: actions move by up to 0.02). Padding the *pair* to
+    its own longest is -- the model saw exactly that under batched 'longest' padding
+    in training. Returns None when the checkpoint's native mode already aligns.
+    """
+    from transformers import AutoTokenizer
+
+    cfg = policy.config
+    if cfg.pad_language_to == "max_length":
+        return None
+    tok = AutoTokenizer.from_pretrained(cfg.vlm_model_name)
+    tasks = [t if t.endswith("\n") else t + "\n" for t in instructions]
+    enc = tok(tasks, padding="longest", max_length=cfg.tokenizer_max_length,
+              truncation=True, return_tensors="pt")
+    return int(enc["input_ids"].shape[1])
+
+
 def make_batch(
     images: Tensor | Mapping[str, Tensor],
     state: Tensor,
     instruction: str | Sequence[str],
     policy: Any,
     device: str | torch.device = "cpu",
+    pad_to_length: int | None = None,
 ) -> Batch:
     """Build a SmolVLA input batch.
 
@@ -476,9 +499,9 @@ def make_batch(
     tasks = [t if t.endswith("\n") else t + "\n" for t in tasks]
     enc = tok(
         tasks,
-        padding=cfg.pad_language_to,
+        padding="max_length" if pad_to_length else cfg.pad_language_to,
         padding_side="right",
-        max_length=cfg.tokenizer_max_length,
+        max_length=pad_to_length or cfg.tokenizer_max_length,
         truncation=True,
         return_tensors="pt",
     )
