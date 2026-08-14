@@ -18,6 +18,8 @@ before drawing conclusions from any single file here.
 | `comp_scratch80k` | Same, second checkpoint | **superseded** |
 | `fs_finetune` | Condition 3 with the **fixed-state control**, paired | **headline** |
 | `fs_scratch80k` | Same, second checkpoint | **headline — replication** |
+| `_loc_smoke` | M2 smoke, CPU, first 8 sites, n=3 | **smoke only** — sizes the sweep, answers nothing |
+| `_loc_smoke_mps` | Same smoke on MPS | **smoke only** — agrees with CPU within 0.02, 24× faster |
 
 ## Which numbers to quote
 
@@ -28,10 +30,12 @@ uncontrolled measurement can inflate.
 
 ## Not present yet
 
-`loc_*` (M2 causal localization) and the M3 binding transplant. The sweep is implemented and
-smoke-tested (`scripts/run_localization.py`) but needs a GPU — ~144 forward passes per trial
-across 130 sites, roughly 27 CPU-hours versus ~1 GPU-hour. **No M2 numbers exist anywhere in
-this repo**; anything you see referring to localization is a plan, not a result.
+The full M2 sweep (`loc_*`) and the M3 binding transplant. The GPU assumption in earlier
+versions of this note is dead: the smoke runs above show MPS matches CPU within 0.02 and runs
+24× faster, so the full 130-site, n=40 sweep costs ~3 h on an M-series laptop. (The old "27
+CPU-hours" figure was also 2.5× optimistic against the measured CPU rate of ~16 s/forward.)
+The smoke runs are sizing data only — 8 early-VLM sites, n=6 usable trials, nothing
+significant after BH. **No full-sweep M2 numbers exist in this repo yet.**
 
 ## Retracted
 
