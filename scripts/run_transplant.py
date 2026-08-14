@@ -65,7 +65,7 @@ def main() -> int:
     ap.add_argument("--extract-site", required=True)
     ap.add_argument("--inject-site", default=None, help="defaults to the extract site")
     ap.add_argument("--alphas", default="0.25,0.5,1.0")
-    ap.add_argument("--positions", default=None, help="token slice a:b to restrict the delta to")
+    ap.add_argument("--positions", default=None, help="token slice a:b, or 'lang' for the language block")
     ap.add_argument("--n-trials", type=int, default=10, help="states per contrast")
     ap.add_argument("--device", default="cpu")
     ap.add_argument("--seed", type=int, default=0)
@@ -76,7 +76,7 @@ def main() -> int:
     inject = args.inject_site or args.extract_site
     alphas = [float(a) for a in args.alphas.split(",")]
     pos = None
-    if args.positions:
+    if args.positions and args.positions != "lang":
         a, b = args.positions.split(":")
         pos = list(range(int(a), int(b)))
 
@@ -163,6 +163,13 @@ def main() -> int:
                 for w, f in zip(run_w.occurrences(args.extract_site),
                                 run_f.occurrences(args.extract_site), strict=True)
             ]
+            if args.positions == "lang":
+                from src.models.smolvla import language_token_positions
+
+                n_lang = batch_f["observation.language.tokens"].shape[1]
+                pos = language_token_positions(
+                    model.policy, deltas[0].shape[1], n_lang
+                )
             if pos is not None:
                 deltas = [restrict_to_positions(d, pos) for d in deltas]
 
