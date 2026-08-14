@@ -19,7 +19,7 @@ before drawing conclusions from any single file here.
 | `fs_finetune` | Condition 3 with the **fixed-state control**, paired | **headline** |
 | `fs_scratch80k` | Same, second checkpoint | **headline — replication** |
 | `_loc_smoke` | M2 smoke, CPU, first 8 sites, n=3 | **smoke only** — sizes the sweep, answers nothing |
-| `_loc_smoke_mps` | Same smoke on MPS | **smoke only** — agrees with CPU within 0.02, 24× faster |
+| `_loc_smoke_mps` | Same smoke on MPS | **smoke only** — same ranking; resid sites within 0.02, mlp up to 0.21; 24× faster |
 
 ## Which numbers to quote
 
@@ -31,9 +31,14 @@ uncontrolled measurement can inflate.
 ## Not present yet
 
 The full M2 sweep (`loc_*`) and the M3 binding transplant. The GPU assumption in earlier
-versions of this note is dead: the smoke runs above show MPS matches CPU within 0.02 and runs
-24× faster, so the full 130-site, n=40 sweep costs ~3 h on an M-series laptop. (The old "27
-CPU-hours" figure was also 2.5× optimistic against the measured CPU rate of ~16 s/forward.)
+versions of this note is dead: MPS runs 24× faster than CPU, so the full 130-site, n=40 sweep
+costs ~3 h on an M-series laptop. Agreement, stated precisely (an earlier version of this
+note claimed a blanket "within 0.02", which the committed metrics contradict): site ranking
+is identical; the four resid sites — the ones carrying the recovery signal — agree within
+0.014; the small/noisy attn_out and mlp_out values differ by 0.03–0.21 and the null mean by
+0.15. Cross-backend agreement on noisy negative sites is NOT established, which is a caveat
+any MPS-run map inherits for those components. (The old "27 CPU-hours" figure was also 2.5×
+optimistic against the measured CPU rate of ~16 s/forward.)
 The smoke runs are sizing data only — 8 early-VLM sites, n=6 usable trials, nothing
 significant after BH. **No full-sweep M2 numbers exist in this repo yet.**
 
