@@ -54,7 +54,7 @@ def main() -> int:
     ap = argparse.ArgumentParser(description=__doc__)
     ap.add_argument("--checkpoint", required=True)
     ap.add_argument("--suite", default="libero_goal")
-    ap.add_argument("--data-root", default="data/libero")
+    ap.add_argument("--data-root", type=Path, default=REPO_ROOT / "data" / "libero")
     ap.add_argument("--extract-site", required=True)
     ap.add_argument("--inject-site", default=None, help="defaults to the extract site")
     ap.add_argument("--alphas", default="0.25,0.5,1.0")
@@ -80,12 +80,15 @@ def main() -> int:
     if args.positions and args.positions != "lang":
         a, b = args.positions.split(":")
         pos = list(range(int(a), int(b)))
+        if not pos:
+            sys.exit(f"--positions {args.positions} selects nothing")
 
     run_id = args.run_id or f"m3_{args.extract_site.replace('.', '_')}"
     out_dir = REPO_ROOT / "results" / run_id
     out_dir.mkdir(parents=True, exist_ok=True)
-    suite_dir = REPO_ROOT / args.data_root / args.suite
+    suite_dir = args.data_root / args.suite
     np.random.seed(args.seed)
+    torch.manual_seed(args.seed)
 
     anchors = build_anchors(task_endpoints(suite_dir))
 
@@ -107,6 +110,8 @@ def main() -> int:
                 "checkpoint": args.checkpoint, "extract_site": args.extract_site,
                 "inject_site": inject, "alphas": alphas, "positions": args.positions,
                 "n_trials_per_contrast": args.n_trials, "contrasts": CONTRASTS,
+                "suite": args.suite, "data_root": str(args.data_root),
+                "min_trials": args.min_trials,
                 "seed": args.seed, "device": args.device,
                 "image_orientation": "rot180", "state_composition": list(STATE_KEYS),
                 "platform": platform.platform(), "torch": torch.__version__,
@@ -165,10 +170,21 @@ def main() -> int:
                 for w, f in zip(run_w.occurrences(args.extract_site),
                                 run_f.occurrences(args.extract_site), strict=True)
             ]
+            if pos is not None and pos[-1] >= deltas[0].shape[1]:
+                # on 'longest'-padded checkpoints the prefix length varies per
+                # contrast, so a fixed numeric slice can walk off the end (or
+                # silently name different tokens); die here, not after hours
+                sys.exit(
+                    f"--positions {args.positions} exceeds this contrast's "
+                    f"{deltas[0].shape[1]}-token activation; on variable-pad "
+                    f"checkpoints use --positions lang"
+                )
             if args.positions == "lang":
                 from src.models.smolvla import language_token_positions
 
-                n_lang = batch_f["observation.language.tokens"].shape[1]
+                from lerobot.utils.constants import OBS_LANGUAGE_TOKENS
+
+                n_lang = batch_f[OBS_LANGUAGE_TOKENS].shape[1]
                 pos = language_token_positions(
                     model.policy, deltas[0].shape[1], n_lang
                 )
