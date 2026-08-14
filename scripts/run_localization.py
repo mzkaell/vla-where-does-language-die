@@ -175,6 +175,11 @@ def main() -> int:
 
         pooled = [t for ts in OBJECT_SOURCE_TASKS.values() for t in ts]
         states = collect_states(suite_dir, pooled, args.n_trials, args.seed)[: args.n_trials]
+        instr_w = instruction_for(contrast["working_object"], dest)
+        instr_f = instruction_for(contrast["failing_object"], dest)
+        # 'longest'-padded checkpoints need the pair padded to a common length
+        # or cross-run patches fail on a token-dim mismatch (see pair_pad_length).
+        pad_len = pair_pad_length(model.policy, [instr_w, instr_f])
         print(f"\ncontrast: '{dest}'  working={contrast['working_object']}  "
               f"failing={contrast['failing_object']}  ({len(states)} states)")
 
@@ -186,11 +191,6 @@ def main() -> int:
             ee = np.asarray(st["ee_pos"], dtype=np.float64)
             noise = model.make_noise(1)
 
-            instr_w = instruction_for(contrast["working_object"], dest)
-            instr_f = instruction_for(contrast["failing_object"], dest)
-            # 'longest'-padded checkpoints need the pair padded to a common length
-            # or cross-run patches fail on a token-dim mismatch (see pair_pad_length).
-            pad_len = pair_pad_length(model.policy, [instr_w, instr_f])
             batch_w = make_batch(
                 images, state_t, instr_w, model.policy, args.device,
                 pad_to_length=pad_len,

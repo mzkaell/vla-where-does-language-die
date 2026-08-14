@@ -121,18 +121,23 @@ def main() -> int:
     )
 
     cosp: dict[float, list[float]] = {a: [] for a in alphas}
-    baselines_per_alpha: dict[float, list[TrialBaseline]] = {a: [] for a in alphas}
     disp_per_alpha: dict[float, list[float]] = {a: [] for a in alphas}
+    baselines: list[TrialBaseline] = []  # one per scored trial, shared by every alpha
     skipped = 0
     t0, n_done = time.time(), 0
+
+    from src.eval.composition import OBJECT_SOURCE_TASKS
+
+    # contrast-invariant: same pooled tasks and seed every time, so collect once
+    pooled = [t for ts in OBJECT_SOURCE_TASKS.values() for t in ts]
+    states = collect_states(suite_dir, pooled, args.n_trials, args.seed)[: args.n_trials]
 
     for contrast in CONTRASTS:
         dest = contrast["destination"]
         anchor = anchors[dest]
-        from src.eval.composition import OBJECT_SOURCE_TASKS
-
-        pooled = [t for ts in OBJECT_SOURCE_TASKS.values() for t in ts]
-        states = collect_states(suite_dir, pooled, args.n_trials, args.seed)[: args.n_trials]
+        instr_w = instruction_for(contrast["working_object"], dest)
+        instr_f = instruction_for(contrast["failing_object"], dest)
+        pad_len = pair_pad_length(model.policy, [instr_w, instr_f])
         print(f"\ncontrast: '{dest}'  ({len(states)} states)", flush=True)
 
         for st in states:
@@ -143,9 +148,6 @@ def main() -> int:
             ee = np.asarray(st["ee_pos"], dtype=np.float64)
             noise = model.make_noise(1)
 
-            instr_w = instruction_for(contrast["working_object"], dest)
-            instr_f = instruction_for(contrast["failing_object"], dest)
-            pad_len = pair_pad_length(model.policy, [instr_w, instr_f])
             batch_w = make_batch(images, state_t, instr_w, model.policy, args.device,
                                  pad_to_length=pad_len)
             batch_f = make_batch(images, state_t, instr_f, model.policy, args.device,
@@ -196,8 +198,8 @@ def main() -> int:
                                       noise=noise)
                 d = net_translation(model.unnormalize_action(patched.action))
                 cosp[alpha].append(direction_cosine(d, ee, anchor))
-                baselines_per_alpha[alpha].append(base)
                 disp_per_alpha[alpha].append(float(np.linalg.norm(d)))
+            baselines.append(base)
 
             n_done += 1
             if n_done == 1 or n_done % 5 == 0:
@@ -207,7 +209,7 @@ def main() -> int:
                       flush=True)
 
     verdicts = [
-        judge(args.extract_site, inject, a, cosp[a], baselines_per_alpha[a],
+        judge(args.extract_site, inject, a, cosp[a], baselines,
               disp_per_alpha[a], seed=args.seed, min_trials=args.min_trials)
         for a in alphas
     ]
