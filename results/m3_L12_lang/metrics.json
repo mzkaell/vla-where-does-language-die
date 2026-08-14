@@ -1,0 +1,18 @@
+{
+  "verdicts": [
+    {
+      "extract_site": "vlm.L12.resid_post",
+      "inject_site": "vlm.L12.resid_post",
+      "alpha": 1.0,
+      "n": 42,
+      "recovery_mean": 0.37195695294370373,
+      "recovery_lo": 0.273719971735063,
+      "recovery_hi": 0.4812145578041701,
+      "verdict": "not-readout",
+      "degenerate": false,
+      "n_dropped_nonfinite": 0
+    }
+  ],
+  "n_trials_used": 42,
+  "n_skipped": 18
+}
