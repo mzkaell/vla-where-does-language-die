@@ -29,6 +29,7 @@ identical calls differ and patching correctness is untestable.
 from __future__ import annotations
 
 import contextlib
+from functools import lru_cache
 from collections.abc import Iterator, Mapping, Sequence
 from pathlib import Path
 from typing import Any
@@ -444,6 +445,23 @@ def load_norm_stats(checkpoint: str, device: str = "cpu") -> dict[str, Tensor]:
 # ---------------------------------------------------------------- input building
 
 
+@lru_cache(maxsize=4)
+def _tokenizer(vlm_model_name: str):
+    """One tokenizer per process. Constructing it per call re-reads the tokenizer
+    files (and can touch the hub) inside the trial hot loop — CLAUDE.md §11 says
+    cache aggressively."""
+    from transformers import AutoTokenizer
+
+    return AutoTokenizer.from_pretrained(vlm_model_name)
+
+
+def _prep_tasks(instructions: Sequence[str]) -> list[str]:
+    """The newline rule shared by pair_pad_length and make_batch. It must be ONE
+    function: pair_pad_length's padding guarantee only holds if it tokenizes
+    exactly the strings make_batch will feed the model."""
+    return [t if t.endswith("\n") else t + "\n" for t in instructions]
+
+
 def pair_pad_length(policy: Any, instructions: Sequence[str]) -> int | None:
     """Common token length for a set of instructions that will be patched across.
 
@@ -454,15 +472,12 @@ def pair_pad_length(policy: Any, instructions: Sequence[str]) -> int | None:
     its own longest is -- the model saw exactly that under batched 'longest' padding
     in training. Returns None when the checkpoint's native mode already aligns.
     """
-    from transformers import AutoTokenizer
-
     cfg = policy.config
     if cfg.pad_language_to == "max_length":
         return None
-    tok = AutoTokenizer.from_pretrained(cfg.vlm_model_name)
-    tasks = [t if t.endswith("\n") else t + "\n" for t in instructions]
-    enc = tok(tasks, padding="longest", max_length=cfg.tokenizer_max_length,
-              truncation=True, return_tensors="pt")
+    tok = _tokenizer(cfg.vlm_model_name)
+    enc = tok(_prep_tasks(instructions), padding="longest",
+              max_length=cfg.tokenizer_max_length, truncation=True, return_tensors="pt")
     return int(enc["input_ids"].shape[1])
 
 
@@ -520,13 +535,11 @@ def make_batch(
         OBS_LANGUAGE_TOKENS,
         OBS_STATE,
     )
-    from transformers import AutoTokenizer
 
     cfg = policy.config
-    tok = AutoTokenizer.from_pretrained(cfg.vlm_model_name)
+    tok = _tokenizer(cfg.vlm_model_name)
 
-    tasks = [instruction] if isinstance(instruction, str) else list(instruction)
-    tasks = [t if t.endswith("\n") else t + "\n" for t in tasks]
+    tasks = _prep_tasks([instruction] if isinstance(instruction, str) else list(instruction))
     enc = tok(
         tasks,
         padding="max_length" if pad_to_length else cfg.pad_language_to,
