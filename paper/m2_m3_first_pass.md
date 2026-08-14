@@ -47,8 +47,10 @@ structural (late sites sit downstream of everything) and supports neither side.
 - One checkpoint, 3 contrasts, offline cosine readout, MPS backend (resid sites
   agree with CPU within 0.014; attn/mlp up to 0.21 — the profile above is a
   resid-site story, which is the agreeing regime).
-- Replication on the second checkpoint is running; nothing here is replicated
-  yet.
+- The second-checkpoint replication (`loc_scratch80k_resid_cpu`, n=8) reproduces
+  the qualitative shape: vlm.resid_post decay to 0.00 at L15 (faster: 0.04 by
+  L11), the same monotonic expert rise, the same negative early-expert values.
+  Within-family only — both competent checkpoints come from one uploader.
 
 ## What this buys the paper
 
