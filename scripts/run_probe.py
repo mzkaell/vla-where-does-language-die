@@ -98,6 +98,7 @@ def main() -> int:
     acts: dict[str, list[np.ndarray]] = {n: [] for n in site_names}
     labels: list[int] = []
     is_novel: list[bool] = []
+    state_of: list[int] = []   # which state each example came from, for the group split
 
     t0 = time.time()
     for i, st in enumerate(states):
@@ -118,6 +119,7 @@ def main() -> int:
                     acts[n].append(pool_activation(run.occurrences(n)[0][0].float().cpu().numpy()))
                 labels.append(di)
                 is_novel.append(dest not in TRAINED[obj])
+                state_of.append(i)
         if (i + 1) % 5 == 0:
             per = (time.time() - t0) / (i + 1)
             print(f"    {i + 1}/{len(states)} states  ({per:.1f}s/state, "
@@ -127,12 +129,30 @@ def main() -> int:
     novel_mask = np.array(is_novel)
     print(f"\nexamples: {len(y)} total, {(~novel_mask).sum()} trained, {novel_mask.sum()} novel")
 
-    # Train on TRAINED pairings only (held-out split), test on trained-heldout AND novel.
-    trained_idx = np.flatnonzero(~novel_mask)
-    rng.shuffle(trained_idx)
-    cut = int(0.7 * len(trained_idx))
-    tr, te = trained_idx[:cut], trained_idx[cut:]
-    nv = np.flatnonzero(novel_mask)
+    # Train on TRAINED pairings only, test on trained-heldout AND novel.
+    #
+    # SPLIT BY STATE, not by example. Each state contributes 8 examples (2 objects x 4
+    # destinations) that share an observation and a noise draw, so an example-level split
+    # puts near-identical activations in both train and test and lets the probe memorise
+    # state-specific patterns. That leak showed up unmistakably: acc_trained came out at
+    # 1.000 at EVERY site, including expert layers where the instruction signal is ~3e-2
+    # and one where the activation is byte-identical across instructions. Grouping by
+    # state removes it.
+    groups = np.asarray(state_of, dtype=int)
+    trained_states = np.unique(groups[~novel_mask])
+    rng.shuffle(trained_states)
+    cut = int(0.7 * len(trained_states))
+    train_states, test_states = set(trained_states[:cut]), set(trained_states[cut:])
+
+    tr = np.array([i for i in np.flatnonzero(~novel_mask) if groups[i] in train_states])
+    te = np.array([i for i in np.flatnonzero(~novel_mask) if groups[i] in test_states])
+    # Novel examples are held out by construction; also drop any whose state was trained on,
+    # so no probe ever sees a test state.
+    nv = np.array([i for i in np.flatnonzero(novel_mask) if groups[i] in test_states])
+    if nv.size < 10:  # too few novel test examples once states are held out
+        nv = np.flatnonzero(novel_mask)
+        print("  note: too few novel examples in held-out states; using all novel examples")
+    print(f"  split by state: {len(train_states)} train / {len(test_states)} test states")
 
     results = []
     for s in sites:
