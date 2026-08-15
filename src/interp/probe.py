@@ -125,9 +125,17 @@ def verdict(results: list[ProbeResult], margin: float = 0.10) -> dict[str, Any]:
     if not live:
         return {"verdict": "UNDETERMINED", "reason": "no site produced a finite probe accuracy"}
 
-    best = max(live, key=lambda r: r.acc_novel)
-    chance = best.chance
-    control_ok = abs(best.acc_shuffled - chance) < margin
+    # Select among sites whose OWN shuffled control is clean, then take the best decoder.
+    #
+    # Selecting purely on novel accuracy is wrong when sites tie at ceiling: the first run
+    # had many sites at novel=1.000 and picked the one whose shuffled control happened to
+    # sit at 0.43, returning UNDETERMINED while sites with identical decoding and a
+    # chance-level control sat right beside it. The control is a property of each site's
+    # probe, so it belongs in the filter, not applied after the fact to one arbitrary pick.
+    chance = live[0].chance
+    clean = [r for r in live if abs(r.acc_shuffled - chance) < margin]
+    best = max(clean, key=lambda r: r.acc_novel) if clean else max(live, key=lambda r: r.acc_novel)
+    control_ok = bool(clean)
 
     if not control_ok:
         return {

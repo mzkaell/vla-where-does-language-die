@@ -37,8 +37,11 @@ Alternatives:
 > that object *was* trained with, indicating substitution of a memorised pairing rather than
 > failure to attend. A 130-site causal patching sweep did **not** localize this failure; we show
 > its apparent structure is reproduced by a control in which no failure exists, and report the
-> artifact rather than the map. We release the stimulus generator, a checkpoint competence gate,
-> and the controls that caught four false positives in our own pipeline.
+> artifact rather than the map. A linear probe instead recovers the named destination from the
+> action expert's own residual stream at 0.97 on exactly the pairings whose actions go
+> elsewhere, indicating a readout rather than an encoding failure. We release the stimulus
+> generator, a checkpoint competence gate, and the controls that caught five false positives in
+> our own pipeline.
 
 *Notes.* Cut the last sentence for a 150-word version. Leading with the two negative conditions
 is deliberate: it is what makes "compositional" a specific claim rather than generic VLA-bashing,
@@ -174,6 +177,35 @@ We also report that patching the final expert residual gives recovery 1.000 with
 a useful positive control that the machinery works end-to-end, and a trap for anyone who reads
 it as localization.
 
+### 4.6 Probing: the destination is present in the expert and not used  ← THE MECHANISM
+
+Patching could not localize the failure, so we asked the question a different way. A linear
+probe trained on **trained** pairings and tested on **novel** ones recovers the named
+destination from the residual stream, with a label-shuffled control at chance:
+
+| site | trained | novel | shuffled (chance 0.25) |
+|---|---|---|---|
+| `vlm.L5.attn_out` | 1.000 | 1.000 | 0.289 |
+| `vlm.L10.attn_out` | 1.000 | 1.000 | 0.267 |
+| **`expert.L7.resid_post`** | 1.000 | **0.972** | 0.289 |
+| **`expert.L8.resid_pre`** | 1.000 | **0.972** | 0.222 |
+
+**Verdict: readout failure**, replicated on both competent checkpoints. The destination is
+decodable *inside the action expert's own residual stream* for exactly the pairings whose
+actions go elsewhere. The information is present and unused, not absent.
+
+Note this is the opposite of what the transplant reported before its confound was found — an
+instructive pairing, and the reason the standing rule asks for two techniques with different
+failure modes. Probing is correlational and so immune to the causal-proximity artifact that
+defeated the sweep.
+
+**Scope of the claim.** The probe decodes the named *destination*, which is present in the
+input tokens, so perfect accuracy in the VLM is expected and is not itself the finding. Two
+things are: the destination survives into the **expert**, and its decodability is **identical
+for trained and novel pairings** (1.000 vs 0.972) even though behaviour differs sharply. What
+we have *not* shown is that the full object↔destination *binding* is represented — only that
+the destination the action should follow is available where the action is computed.
+
 *8pp version adds:* the binding-transplant attempt and why its verdict is not reportable — the
 difference-of-means direction was computed between instructions differing in the **object**, so
 it encoded object identity rather than binding, and injecting it degraded behaviour monotonically
@@ -193,10 +225,11 @@ and the control shows the sweep's apparent structure is proximity, not mechanism
 checkpoints come from one uploader; LIBERO-Goal supports one object contrast, so results
 generalise over states rather than referents; evaluation is offline.
 
-**Next.** Whether the binding is encoded-but-unread or never encoded remains open. Layer-wise
-probing sidesteps the proximity confound that defeated the patching sweep, and a
-success-vs-failure contrast on the *same* instruction isolates binding without the object
-confound that invalidated our transplant. `[TODO — no results]`
+**Next.** The probe shows the destination is available where the action is computed, so the
+open question narrows: *why* is it not used? A success-vs-failure contrast on the same
+instruction would isolate binding without the object confound that invalidated our transplant,
+and position-resolved patching would separate language- from vision-token contributions.
+`[TODO — no results]`
 
 ---
 

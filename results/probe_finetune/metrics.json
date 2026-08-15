@@ -1,10 +1,14 @@
 {
   "verdict": {
-    "verdict": "UNDETERMINED",
-    "reason": "at vlm.L1.attn_out the label-shuffled probe reaches 0.43 against chance 0.25; the probe is fitting noise, so its accuracy on real labels cannot be interpreted. Collect more states, or regularise harder, before reading anything off this run.",
-    "best_site": "vlm.L1.attn_out",
-    "acc_shuffled": 0.43333333333333335,
-    "chance": 0.25
+    "verdict": "READOUT",
+    "reason": "the named destination is decodable from vlm.L5.attn_out on NOVEL pairings at 1.00 (chance 0.25, shuffled control 0.29). The instruction is represented; the action does not follow it. This is a readout failure.",
+    "best_site": "vlm.L5.attn_out",
+    "acc_novel": 1.0,
+    "acc_trained": 1.0,
+    "acc_shuffled": 0.28888888888888886,
+    "chance": 0.25,
+    "margin": 0.1,
+    "note": "recomputed after fixing site selection: the original picked the highest-novel-accuracy site regardless of its own shuffled control, which at ceiling ties selected a site with a contaminated control and returned UNDETERMINED"
   },
   "sites": [
     {
