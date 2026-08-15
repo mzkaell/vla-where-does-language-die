@@ -1,0 +1,11 @@
+run_id: "probe_scratch80k"
+experiment: "layerwise_destination_probe"
+checkpoint: "k1000dai/smolvla_libero_scratch_80k"
+n_states: 60
+destinations: ["the plate", "the stove", "top of the cabinet", "the rack"]
+chance: 0.25
+seed: 0
+device: "cuda"
+image_orientation: "rot180"
+state_composition: ["ee_pos", "ee_ori", "gripper_states"]
+platform: "Linux-6.17.0-1019-aws-x86_64-with-glibc2.39"
