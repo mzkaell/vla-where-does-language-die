@@ -1,0 +1,224 @@
+% Paper A — RoboPAD short track (4 pp) / VLM4RWD (8 pp)
+%
+% Build:  pdflatex main && bibtex main && pdflatex main && pdflatex main
+%
+% REQUIRES neurips_2026.sty in this directory (download from neurips.cc; it is not
+% redistributable here). Without it LaTeX will fail on the \usepackage line below.
+%
+% Track option: dblblindworkshop = workshop with double-blind review, which is what
+% RoboPAD, VLM4RWD and Interpretability-for-Discovery all use. Switch to
+% [dblblindworkshop, final] only after acceptance.
+\documentclass{article}
+\usepackage[dblblindworkshop]{neurips_2026}
+
+% The workshop template requires BOTH \title and \workshoptitle.
+\workshoptitle{Robot Foundation Models: Post-Pretraining Adaptation, Reasoning and Evaluation (RoboPAD)}
+
+\usepackage[utf8]{inputenc}
+\usepackage[T1]{fontenc}
+\usepackage{hyperref}
+\usepackage{url}
+\usepackage{booktabs}
+\usepackage{amsfonts}
+\usepackage{nicefrac}
+\usepackage{microtype}
+\usepackage{xcolor}
+\usepackage{graphicx}
+
+\title{Instruction Grounding in Vision-Language-Action Models Fails\\Compositionally, Not Globally}
+
+\author{%
+  Anonymous \\
+  % Filled in for the camera-ready only; submission is double-blind.
+}
+
+\begin{document}
+\maketitle
+
+\begin{abstract}
+Vision-language-action models (VLAs) are widely reported to under-use their language input.
+We ask \emph{when} this happens. Using minimal contrastive pairs on LIBERO-Goal---identical
+observations, instructions differing in exactly one referent---we find that a LIBERO-finetuned
+SmolVLA follows instructions well in the conditions such failures are usually attributed to:
+$0.745$ on neutral states, and $0.93$--$0.95$ when caught mid-trajectory and commanded to
+redirect, where the visual context actively opposes the instruction. Grounding fails only when
+the instruction requires \emph{composition}. Commanding a pairing of familiar words never
+demonstrated in training (``put the bowl on the rack'') degrades accuracy by $0.19$--$0.25$
+under a paired control that holds the observation fixed and varies only the object word,
+replicated across both publicly available competent checkpoints. Errors are structured:
+$93$--$96\%$ send the arm to a destination that object \emph{was} trained with, indicating
+substitution of a memorised pairing. A 130-site causal patching sweep did \textbf{not} localize
+this failure, and we show its apparent structure is reproduced by a control in which no failure
+exists. A linear probe instead recovers the named destination from the action expert at $0.95$--$0.99$
+on exactly the pairings whose actions go elsewhere, indicating a readout rather than an encoding
+failure. We release the stimulus generator, a checkpoint competence gate, and the controls that
+caught five false positives in our own pipeline.
+\end{abstract}
+
+\section{Introduction}
+\label{sec:intro}
+
+VLAs map a camera image and a language instruction to robot actions. A growing behavioural
+literature reports that they under-use the language and default to visual
+priors~\citep{better,icbench,liberocf,robosem}. This matters because the instruction is the
+entire control interface: a policy that ignores the words is not steerable.
+
+That literature establishes \emph{that} failures occur, largely in aggregate. It says much less
+about \emph{when}---under which linguistic demands grounding holds and under which it breaks.
+The gap is consequential for mechanistic work, which needs a condition that reliably elicits the
+failure before it can localize anything.
+
+We probe with minimal contrastive pairs: identical observations, instructions differing in
+exactly one referent, so any change in the predicted action is attributable to the swapped word.
+Across three regimes of increasing linguistic demand, grounding holds in the two where prior work
+would predict failure---including direct visual--motor conflict---and breaks only under
+composition. The error pattern identifies the mechanism as substitution of a memorised pairing,
+i.e.\ an object$\leftrightarrow$destination \emph{binding} failure rather than a failure to
+attend to language.
+
+\paragraph{Contributions.}
+\begin{enumerate}\itemsep0pt
+\item A controlled localization of \emph{when} VLA grounding fails: compositionally, not
+  globally. Two null regimes are evidence, not discarded attempts.
+\item A released, gate-validated contrastive stimulus generator, and a reference-free directional
+  readout that makes undemonstrated commands scoreable.
+\item A competence gate showing only 2 of 8 public LIBERO SmolVLA checkpoints are usable at all.
+\item A negative localization result \emph{with the control that establishes it as negative},
+  plus a probe that recovers the mechanism the sweep could not.
+\end{enumerate}
+
+\section{Related work}
+\label{sec:related}
+
+\paragraph{Behavioural failures in VLAs.} \citet{better,icbench,liberocf,robosem} report
+instruction under-use. These characterise aggregate rates rather than isolating the linguistic
+operation that fails, so they do not say which manipulations reliably elicit it.
+
+\paragraph{Compositional generalisation.} Studied extensively in language-only and navigation
+settings~\citep{scan,gscan}, and much less in continuous-control policies whose output is a
+trajectory rather than a token sequence.
+
+\paragraph{Binding.} Work on binding identifiers~\citep{bindingids,vlmbinding} predicts exactly
+the object$\leftrightarrow$attribute failure we observe, but characterises it mechanistically on
+the language-model side; the behavioural signature in an action policy has not been described.
+
+\paragraph{VLA interpretability.} \citet{notallfeatures,vlatrace} localize features in VLAs.
+Such methods need a condition that reliably elicits the failure, which is what we supply. Our
+negative sweep also speaks to how readily these methods produce artifacts without matched
+controls.
+
+\section{Method}
+\label{sec:method}
+
+\paragraph{Minimal contrastive pairs.} One observation, two instructions differing in exactly one
+referent. A pair ships only if it passes four gates, each with a regression test: a single-edit
+word-level diff (one edit block, merged across filler words, preposition-free span, verb
+unchanged); shared scene; both instructions achievable from the state; and counterbalanced source
+tasks. Two of these gates exist because naive implementations silently admitted invalid pairs.
+
+\paragraph{Three regimes.} \emph{Neutral}: pre-grasp states, where both instructions are
+achievable and no visual prior favours either. \emph{Conflict}: post-grasp states, where the arm
+already carries the object toward the demonstrated goal so the observation opposes the
+alternative command. \emph{Compositional}: trained versus never-demonstrated pairings. All ten
+LIBERO-Goal scenes contain the same seven objects, so novel pairings are physically executable.
+
+\paragraph{Readouts.} For the first two regimes, \emph{directional IFR}: does commanding the
+non-demonstrated instruction push the prediction away from the demonstrated trajectory (chance
+$0.5$)? For the compositional regime, novel commands have no demonstration, so we score which
+\emph{destination anchor} the predicted net displacement points toward. Anchors are the mean
+final end-effector position of the demonstrations ending at each destination (sd
+$0.03$--$0.05$\,m, pairwise separation $0.19$--$0.57$\,m; the cabinet anchor agrees within
+$0.07$\,m across two different objects, so it tracks the destination rather than the task).
+
+\paragraph{Controls.} A competence gate (Sec.~\ref{sec:exp}); pinned flow-matching noise, so
+identical inputs give bit-identical actions (control passes at exactly $0.0$); a trained-pairing
+control for the compositional readout; and a fixed-state control holding the observation
+byte-identical while varying only the object word.
+
+\section{Experiments}
+\label{sec:exp}
+
+\paragraph{Setup.} SmolVLA-450M on LIBERO-Goal, evaluated offline on stored demonstration
+states. Paired bootstrap, 10k resamples.
+
+\paragraph{Competence gate.} Only 2 of 8 public LIBERO SmolVLA checkpoints track the
+demonstrations better than an unrelated trajectory does; four score \emph{worse} than that
+baseline at every image orientation. All results below use the two that pass. We report this as
+a result rather than housekeeping: it bears directly on the reproducibility of this literature.
+
+\begin{table}[t]
+\caption{Grounding holds under neutral and conflicting conditions and breaks under composition.
+Compositional figures are the paired fixed-state control, which holds the observation
+byte-identical and varies only the object word.}
+\label{tab:regimes}
+\centering
+\begin{tabular}{llll}
+\toprule
+Regime & Readout & Checkpoint A & Checkpoint B \\
+\midrule
+Neutral ($n{=}400$)        & directional IFR & $0.745$ $[0.703, 0.788]$ & --- \\
+Conflict ($n{=}240$)       & directional IFR & $0.946$ $[0.917, 0.971]$ & $0.929$ $[0.896, 0.958]$ \\
+Compositional ($n{=}800$)  & destination gap & $+0.250$ $[0.197, 0.300]$ & $+0.193$ $[0.143, 0.243]$ \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\paragraph{The failure is compositional.} Table~\ref{tab:regimes}. Under direct visual--motor
+conflict the policy redirects on command. Under an undemonstrated pairing of familiar words it
+does not, and the gap is significant in all six destination\,$\times$\,checkpoint cells.
+Crucially, $93$--$96\%$ of novel-command errors send the arm to a destination that object
+\emph{was} trained with: the policy confidently executes a memorised pairing rather than
+wandering.
+
+\paragraph{Causal patching does not localize it.} Patching all 130 sites
+($\{\textrm{vlm},\textrm{expert}\}\times L_{0..15}\times\{\textrm{resid\_pre},
+\textrm{attn\_out},\textrm{mlp\_out},\textrm{resid\_post}\}$) from a working run into a failing
+one yields an apparently clean picture: VLM influence decaying with depth, expert influence
+rising toward the output. It is an artifact of causal proximity. Running the identical sweep on a
+\emph{control} contrast---both instructions trained, no failure to recover---reproduces the same
+profile (Fig.~\ref{fig:sweep}). Novel minus control has mean $-0.056$, and \textbf{0 of 130 sites
+survive Benjamini--Hochberg correction} in either run.
+
+\paragraph{Probing recovers the mechanism.} A linear probe trained on trained pairings and tested
+on novel ones, with a label-shuffled control at every site and a state-grouped split, reads the
+named destination out of the action expert (Fig.~\ref{fig:probe}). It is absent from the expert's
+earliest layers, becomes strongly decodable by layer 7 ($0.985$ at
+\texttt{expert.L7.attn\_out}, shuffled control $0.293$, chance $0.25$), and remains decodable to
+the output---while the action goes elsewhere. \textbf{The instruction is present and unused: a
+readout failure.} This is the opposite of what a difference-of-means transplant reported before
+we found that its direction encoded object identity rather than binding, which is precisely why
+two techniques with different failure modes are needed.
+
+\begin{figure}[t]
+\centering
+\includegraphics[width=0.48\linewidth]{figures/fig2_sweep.pdf}
+\hfill
+\includegraphics[width=0.48\linewidth]{figures/fig3_probe.pdf}
+\caption{\textbf{Left:} the patching sweep's apparent structure is reproduced by a control with
+no failure to recover; their difference is flat. \textbf{Right:} the named destination is
+decodable inside the action expert for novel pairings, peaking at layer 7, while the action does
+not follow it.}
+\label{fig:sweep}
+\label{fig:probe}
+\end{figure}
+
+\section{Conclusion}
+\label{sec:conclusion}
+
+Grounding in this VLA does not fail globally---it fails at composition. Under direct
+visual--motor conflict the policy still redirects on command; under an undemonstrated pairing of
+familiar words it substitutes a memorised destination. Causal patching did not localize this, and
+a matched control shows the sweep's apparent structure is proximity rather than mechanism.
+Probing instead finds the destination present in the action expert and unused.
+
+\paragraph{Limitations.} Effect sizes are moderate and halved under the strictest control. Both
+competent checkpoints come from a single uploader, so replication is weak. LIBERO-Goal supports
+one object contrast, so results generalise over states rather than referents. Evaluation is
+offline, so ``correct'' means heading toward the named destination rather than task success.
+Finally, the probe decodes the named \emph{destination}, which is present in the input tokens; we
+have not shown that the object$\leftrightarrow$destination \emph{binding} itself is represented.
+
+\bibliographystyle{plainnat}
+\bibliography{refs}
+
+\end{document}

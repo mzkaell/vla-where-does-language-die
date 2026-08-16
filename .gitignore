@@ -60,8 +60,10 @@ results/**/cache/
 *.npy
 *.npz
 
-# --- Figures: keep final vendored figures, ignore scratch renders ---
+# --- Figures: generated from results/ by scripts/make_figures.py ---
+# PDFs are tracked so the paper builds from a clean clone; PNGs are scratch.
 figures/scratch/
+figures/*.png
 
 # --- Stimulus sets ARE released artifacts: do not ignore ---
 # (src/data outputs land in stimuli/ and are intentionally tracked)
