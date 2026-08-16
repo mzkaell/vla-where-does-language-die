@@ -49,10 +49,10 @@ replicated across both publicly available competent checkpoints. Errors are stru
 $93$--$96\%$ send the arm to a destination that object \emph{was} trained with, indicating
 substitution of a memorised pairing. A 130-site causal patching sweep did \textbf{not} localize
 this failure, and we show its apparent structure is reproduced by a control in which no failure
-exists. A linear probe instead recovers the named destination from the action expert at $0.95$--$0.99$
-on exactly the pairings whose actions go elsewhere, indicating a readout rather than an encoding
-failure. We release the stimulus generator, a checkpoint competence gate, and the controls that
-caught five false positives in our own pipeline.
+exists. A linear probe confirms the instruction is encoded in the vision-language backbone, but
+its expert-level results do not replicate across checkpoints, so we report no
+readout-versus-encoding verdict. We release the stimulus generator, a checkpoint competence
+gate, and the controls that caught five false positives in our own pipeline.
 \end{abstract}
 
 \section{Introduction}
@@ -84,7 +84,8 @@ attend to language.
   readout that makes undemonstrated commands scoreable.
 \item A competence gate showing only 2 of 8 public LIBERO SmolVLA checkpoints are usable at all.
 \item A negative localization result \emph{with the control that establishes it as negative},
-  plus a probe that recovers the mechanism the sweep could not.
+  and a probe showing the instruction is encoded while the expert-level picture fails to
+  replicate across checkpoints.
 \end{enumerate}
 
 \section{Related work}
@@ -179,15 +180,24 @@ rising toward the output. It is an artifact of causal proximity. Running the ide
 profile (Fig.~\ref{fig:sweep}). Novel minus control has mean $-0.056$, and \textbf{0 of 130 sites
 survive Benjamini--Hochberg correction} in either run.
 
-\paragraph{Probing recovers the mechanism.} A linear probe trained on trained pairings and tested
-on novel ones, with a label-shuffled control at every site and a state-grouped split, reads the
-named destination out of the action expert (Fig.~\ref{fig:probe}). It is absent from the expert's
-earliest layers, becomes strongly decodable by layer 7 ($0.985$ at
-\texttt{expert.L7.attn\_out}, shuffled control $0.293$, chance $0.25$), and remains decodable to
-the output---while the action goes elsewhere. \textbf{The instruction is present and unused: a
-readout failure.} This is the opposite of what a difference-of-means transplant reported before
-we found that its direction encoded object identity rather than binding, which is precisely why
-two techniques with different failure modes are needed.
+\paragraph{Probing: encoded, but no replicable mechanism.} A linear probe trained on trained
+pairings and tested on novel ones, with a label-shuffled control at every site and a
+state-grouped split, decodes the named destination in the VLM at $1.00$ on both checkpoints
+(controls at chance). The instruction is encoded and survives the backbone---though this is
+close to definitional, since the destination word is present in the input tokens.
+
+Inside the \emph{action expert} the picture does not replicate (Fig.~\ref{fig:probe}). One
+checkpoint has 37 expert sites decoding novel pairings above $0.5$, peaking at $0.985$; the
+other has 2, with 29 sites \emph{below} $0.10$ against a chance level of $0.25$---reliably
+wrong rather than uninformative. \textbf{We therefore assert no readout-versus-encoding
+verdict.} An earlier draft did, on one checkpoint alone.
+
+Systematic sub-chance decoding is a lead rather than noise: with four balanced classes it
+requires a consistent mapping to a wrong class. If the expert represents the destination the
+policy will \emph{actually} move toward---the memorised substitute---rather than the one named,
+a probe trained where the two coincide would predict the substitute and be reliably wrong
+exactly where we observe it, matching the behavioural substitution result. Testing this means
+decoding the executed destination rather than the named one, which we leave to future work.
 
 \begin{figure}[t]
 \centering
@@ -196,8 +206,8 @@ two techniques with different failure modes are needed.
 \includegraphics[width=0.48\linewidth]{figures/fig3_probe.pdf}
 \caption{\textbf{Left:} the patching sweep's apparent structure is reproduced by a control with
 no failure to recover; their difference is flat. \textbf{Right:} the named destination is
-decodable inside the action expert for novel pairings, peaking at layer 7, while the action does
-not follow it.}
+decodable inside the action expert on one checkpoint but not the other; the second shows
+systematic \emph{sub-chance} decoding, so we assert no mechanism.}
 \label{fig:sweep}
 \label{fig:probe}
 \end{figure}
