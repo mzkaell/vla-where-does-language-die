@@ -38,8 +38,9 @@ Alternatives:
 > failure to attend. A 130-site causal patching sweep did **not** localize this failure; we show
 > its apparent structure is reproduced by a control in which no failure exists, and report the
 > artifact rather than the map. A linear probe instead recovers the named destination from the
-> action expert at 0.95–0.99 on exactly the pairings whose actions go elsewhere, against a
-> label-shuffled control at chance, indicating a readout rather than an encoding failure. We release the stimulus
+> a linear probe finds the instruction encoded in the vision-language backbone but yields
+> expert-level results that do not replicate across checkpoints, so we report no mechanistic
+> verdict. We release the stimulus
 > generator, a checkpoint competence gate, and the controls that caught five false positives in
 > our own pipeline.
 
@@ -177,48 +178,39 @@ We also report that patching the final expert residual gives recovery 1.000 with
 a useful positive control that the machinery works end-to-end, and a trap for anyone who reads
 it as localization.
 
-### 4.6 Probing: the destination reaches the expert and is not used  ← THE MECHANISM
+### 4.6 Probing: the instruction is encoded, but the expert-level claim does not replicate
 
-Patching could not localize the failure, so we asked the question a different way. A linear
-probe is trained on **trained** pairings and tested on **novel** ones, with a label-shuffled
-control at every site and a **state-grouped split** (all examples from one observation go
-entirely to train or to test).
+A linear probe trained on **trained** pairings and tested on **novel** ones, with a
+label-shuffled control at every site and a **state-grouped split**, shows the named
+destination is trivially decodable in the VLM (1.00 at several attention outputs, shuffled
+controls at chance, on both checkpoints). That establishes the instruction is encoded and
+survives the vision-language backbone. It is also close to definitional, since the
+destination word is present in the input tokens.
 
-Reading the destination out of the action expert's residual stream, for the very pairings
-whose actions go elsewhere (n=150 states, 1200 examples, chance 0.25):
+**The claim we cannot make is about the action expert.** On one checkpoint the destination
+appears strongly decodable inside the expert (37 sites above 0.5, peaking at 0.985 at
+`expert.L7.attn_out`), which would be a clean readout failure. On the second competent
+checkpoint it is not: only 2 expert sites exceed 0.5, and **29 sit below 0.10** — far
+*below* the 0.25 chance level, meaning the probe is reliably *wrong* rather than
+uninformative.
 
-| expert layer | 0–2 | 3–4 | 5–6 | **7–8** | 9–12 | 15 |
-|---|---|---|---|---|---|---|
-| acc (novel) | 0.27–0.35 | 0.67 | 0.24–0.25 | **0.95–0.96** | 0.75–0.79 | 0.65 |
-| shuffled | 0.27–0.32 | 0.28–0.30 | 0.36 | 0.24–0.29 | 0.27–0.32 | 0.33 |
+| expert tower, acc on novel pairings | finetune | scratch\_80k |
+|---|---|---|
+| sites > 0.5 (clean control) | 37 | 2 |
+| sites < 0.10 (systematically wrong) | 3 | 29 |
 
-Best clean site: `expert.L7.attn_out`, **0.985** novel against a shuffled control of 0.293.
-124 of 130 sites have controls within 0.10 of chance.
+We therefore **do not claim a readout failure.** An earlier draft did, on the first
+checkpoint alone; the replication removed it.
 
-**Verdict: readout failure**, replicated on both competent checkpoints. The named destination
-is absent from the expert's earliest layers, becomes strongly decodable by layer 7 — consistent
-with cross-attention pulling it in from the VLM — and remains decodable to the output, while
-the action goes somewhere else entirely. The information is present and unused, not missing.
-
-This is the opposite of what the transplant reported before its confound was found, which is
-precisely why the standing rule asks for two techniques with different failure modes. Probing
-is correlational and so immune to the causal-proximity artifact that defeated the sweep.
-
-**Scope of the claim, and two measurement notes.**
-*(i)* The probe decodes the named *destination*, which is present in the input tokens; high
-accuracy in the VLM is therefore expected and is not the finding. The findings are that it
-survives into the **expert** and that decodability is near-identical for trained and novel
-pairings despite behaviour differing sharply. We have **not** shown the object↔destination
-*binding* is represented — only that the destination the action should follow is available
-where the action is computed.
-*(ii)* Activations are mean-pooled over all positions, so language signal is diluted in the
-residual stream (dominated by ~1000 image tokens) and concentrated in attention outputs. This
-is why `attn_out` sites read higher than `resid_post` at the same layer, and it is a reason to
-prefer position-resolved probing in follow-up work.
-*(iii)* An earlier version of this probe reported perfect held-out accuracy at **every** site,
-including one whose activation we verified is byte-identical across instructions. The cause was
-an example-level rather than state-level split. We report it because the failure is invisible
-without a site that provably cannot carry the signal.
+**The below-chance pattern is a lead, not a result.** Systematic sub-chance decoding is not
+noise: with four balanced classes it requires a consistent mapping to a *wrong* class. One
+hypothesis fits the behavioural finding directly — if the expert represents the destination
+the policy will *actually* move toward (the memorised substitute) rather than the one named,
+then a probe trained where named and actual coincide will predict the substitute and be
+reliably wrong on novel pairings. That is testable by decoding the *executed* destination
+instead of the named one, which we have not run. If it held, the mechanism would be a
+substitution at the representational level rather than a readout failure. We flag it as the
+obvious next experiment rather than asserting it.
 
 *8pp version adds:* the binding-transplant attempt and why its verdict is not reportable — the
 difference-of-means direction was computed between instructions differing in the **object**, so
@@ -253,7 +245,7 @@ and position-resolved patching would separate language- from vision-token contri
 |---|---|---|---|
 | **RoboPAD (short)** | 4 | **strong** | short track explicitly solicits "preliminary findings, positions, benchmarks, and **negative results**" — this paper's exact shape |
 | **VLM4RWD** | 8 | **strong** | scope names visual grounding, compositional reasoning, benchmarks for grounding evaluation, embodied AI |
-| Interpretability for Discovery | 5 | **conditional** | welcomes "failure cases and negative results", so §4.5 qualifies as a methods contribution — but the interpretability payload is currently a null. Stronger if the probe experiment lands before Aug 29. |
+| Interpretability for Discovery | 5 | **weak** | welcomes "failure cases and negative results", so §4.5 qualifies as a methods contribution — but the interpretability payload is currently a null. Stronger if the probe experiment lands before Aug 29. |
 
 All three are **non-archival**, so simultaneous submission is permitted and none blocks a later
 archival version. Verify each venue's dual-submission line before relying on it.
