@@ -1,4 +1,4 @@
-% Paper A — RoboPAD short track (4 pp) / VLM4RWD (8 pp)
+% Paper A -- RoboPAD short track (4 pp) / VLM4RWD (8 pp)
 %
 % Build:  pdflatex main && bibtex main && pdflatex main && pdflatex main
 %
@@ -139,8 +139,11 @@ byte-identical while varying only the object word.
 \section{Experiments}
 \label{sec:exp}
 
-\paragraph{Setup.} SmolVLA-450M on LIBERO-Goal, evaluated offline on stored demonstration
-states. Paired bootstrap, 10k resamples.
+\paragraph{Setup.} SmolVLA-450M~\citep{smolvla} on LIBERO-Goal~\citep{libero}, evaluated
+offline on stored demonstration states. Paired bootstrap, 10k resamples. We use SmolVLA
+because its small size makes exhaustive patching tractable on a single consumer GPU; the
+discrete action vocabulary of larger autoregressive VLAs such as
+OpenVLA~\citep{openvla} would permit a direct action lens, which we discuss as future work.
 
 \paragraph{Competence gate.} Only 2 of 8 public LIBERO SmolVLA checkpoints track the
 demonstrations better than an unrelated trajectory does; four score \emph{worse} than that
