@@ -37,12 +37,10 @@ Alternatives:
 > that object *was* trained with, indicating substitution of a memorised pairing rather than
 > failure to attend. A 130-site causal patching sweep did **not** localize this failure; we show
 > its apparent structure is reproduced by a control in which no failure exists, and report the
-> artifact rather than the map. A linear probe instead recovers the named destination from the
-> a linear probe finds the instruction encoded in the vision-language backbone but yields
-> expert-level results that do not replicate across checkpoints, so we report no mechanistic
-> verdict. We release the stimulus
-> generator, a checkpoint competence gate, and the controls that caught five false positives in
-> our own pipeline.
+> artifact rather than the map. A linear probe finds the instruction encoded in the
+> vision-language backbone, but its expert-level results do not replicate across checkpoints, so
+> we report no readout-versus-encoding verdict. We release the stimulus generator, a checkpoint
+> competence gate, and the controls that caught five false positives in our own pipeline.
 
 *Notes.* Cut the last sentence for a 150-word version. Leading with the two negative conditions
 is deliberate: it is what makes "compositional" a specific claim rather than generic VLA-bashing,

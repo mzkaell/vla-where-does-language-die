@@ -85,3 +85,16 @@ wandb/
 
 # Stray run logs (runs write to results/<run_id>/ instead)
 *.log
+
+# NeurIPS style file: download from neurips.cc into paper/. Not redistributable,
+# and vendoring it invites the failure we already hit -- a file with the right name
+# but the wrong contents (a 1990s nips10submit_e.sty) that fails obscurely.
+paper/neurips_2026.sty
+
+# LaTeX build artefacts
+paper/*.aux
+paper/*.log
+paper/*.out
+paper/*.bbl
+paper/*.blg
+paper/*.pdf
