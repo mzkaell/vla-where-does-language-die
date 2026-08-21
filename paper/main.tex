@@ -8,11 +8,30 @@
 % Track option: dblblindworkshop = workshop with double-blind review, which is what
 % RoboPAD, VLM4RWD and Interpretability-for-Discovery all use. Switch to
 % [dblblindworkshop, final] only after acceptance.
+% ---------------------------------------------------------------------------
+% ONE SOURCE, TWO PAPERS.
+%
+% RoboPAD wants 4 pages, VLM4RWD wants 8. Maintaining two .tex files guarantees
+% they drift -- a number fixed in one and missed in the other is exactly the
+% failure this project has spent a fortnight learning to avoid. So the long-only
+% material lives inside \iflong ... \fi and both versions build from this file.
+%
+%   4-page  (RoboPAD):  \longfalse   <- default below
+%   8-page  (VLM4RWD):  \longtrue
+% ---------------------------------------------------------------------------
+\newif\iflong
+\longfalse          % <-- flip to \longtrue for the 8-page VLM4RWD version
+
 \documentclass{article}
 \usepackage[dblblindworkshop]{neurips_2026}
 
-% The workshop template requires BOTH \title and \workshoptitle.
-\workshoptitle{Robot Foundation Models: Post-Pretraining Adaptation, Reasoning and Evaluation (RoboPAD)}
+% The workshop template requires BOTH \title and \workshoptitle. The venue differs
+% between the two builds, so it follows the same switch.
+\iflong
+  \workshoptitle{Vision-Language Models for Real-World Deployment (VLM4RWD)}
+\else
+  \workshoptitle{Robot Foundation Models: Post-Pretraining Adaptation, Reasoning and Evaluation (RoboPAD)}
+\fi
 
 \usepackage[utf8]{inputenc}
 \usepackage[T1]{fontenc}
@@ -252,6 +271,79 @@ one object contrast, so results generalise over states rather than referents. Ev
 offline, so ``correct'' means heading toward the named destination rather than task success.
 Finally, the probe decodes the named \emph{destination}, which is present in the input tokens; we
 have not shown that the object$\leftrightarrow$destination \emph{binding} itself is represented.
+
+\iflong
+\section{Five measurement artifacts}
+\label{sec:artifacts}
+
+Every result in this paper had a predecessor that was wrong. We report them because four of the
+five produced clean, statistically significant, entirely plausible numbers, and because the
+property that caught them generalises: each was exposed by a check \emph{capable of
+contradicting the headline}, never by re-reading code.
+
+\paragraph{1. One-sided stimulus set.} The generator consumed task A's states before reaching
+task B, and callers never took enough pairs to get there, so 100\% of states came from the
+A-side task. The directional readout then only ever asked its question in one direction, and any
+asymmetry between the two instructions read as a grounding effect. It produced a striking
+destination-versus-object dissociation. \emph{Caught by} a second checkpoint returning the
+opposite, equally significant result on identical stimuli.
+
+\paragraph{2. Inverted images.} LIBERO stores frames under MuJoCo's OpenGL convention. The
+policy saw upside-down scenes and scored no better than predicting an unrelated trajectory,
+while still yielding confident instruction-following numbers. \emph{Caught by} a competence
+gate---the ratio of prediction-to-demonstration distance against the distance between two
+unrelated demonstrations---which we now run before any experiment.
+
+\paragraph{3. A reference that rewarded stalling.} The directional readout compared a 50-step
+predicted chunk against a \emph{single} demonstration action broadcast across all 50 steps,
+scoring a policy that stops as highly as one that follows the trajectory through. \emph{Caught
+by} asking what the metric would return for a degenerate policy.
+
+\paragraph{4. A leaking probe split.} Each observation contributes eight examples (two objects
+$\times$ four destinations); splitting by example put near-identical activations in both train
+and test. Held-out accuracy read $1.000$ at \emph{every} site. \emph{Caught by} a site we could
+verify carries no signal: \texttt{expert.L0.resid\_pre} is byte-identical across instructions,
+so perfect decoding there is impossible. Grouping by observation dropped it to $0.400$, equal to
+its own shuffled control.
+
+\paragraph{5. A transplant that moved the wrong thing.} The injected delta was taken between
+instructions differing in the \emph{object} word, so it encoded object identity alongside any
+binding; injecting it degraded behaviour monotonically with dose while a norm-matched random
+direction stayed near zero. Restricting to language-token positions localises this rather than
+removing it, since the object token sits inside the language block. No dose or position slice
+fixes it. \emph{Not yet fixed}: the design that would separate the two holds the words fixed and
+contrasts trials where the same novel instruction succeeds against trials where it fails.
+
+\paragraph{What generalises.} A layer $\times$ component heatmap offers fewer opportunities to
+visibly contradict itself than a scalar does. We would now require, before interpreting any such
+map: a competence gate on the checkpoint, a matched control condition in which the effect being
+localized does not exist, a replication checkpoint, and---for any direction-based
+readout---conditioning on whether the instruction could move the action at all. That last one
+matters because a site where language \emph{cannot} matter looks identical to a site where
+language \emph{is ignored}.
+
+\section{Extended results}
+\label{sec:extended}
+
+\paragraph{Per-destination compositional gaps.} The fixed-state control, which holds the
+observation byte-identical and varies only the object word, gives positive gaps in all six
+destination $\times$ checkpoint cells: the plate $+0.100 / +0.180$, the stove $+0.330 / +0.140$,
+the rack $+0.320 / +0.260$. Pooled, $+0.250$ $[0.197, 0.300]$ and $+0.193$ $[0.143, 0.243]$.
+
+\paragraph{Conflict strength.} Binning the conflict regime by how far the demonstration has
+committed shows an apparent decline in the most-committed bin ($0.950 \to 0.900$ and
+$0.975 \to 0.783$). This is a metric artifact rather than an effect: instruction sensitivity
+collapses in the same bin, and where the instruction barely moves the action its \emph{direction}
+is estimated from almost no signal. Splitting that bin by sensitivity separates them---at high
+sensitivity, accuracy is $1.000$ and $0.949$.
+
+\paragraph{Checkpoint screen.} Of eight public LIBERO SmolVLA checkpoints with a compatible
+schema, two are competent (ratios $0.632$, $0.654$), one is marginal ($0.808$), four score worse
+than an unrelated trajectory ($1.673$--$1.868$), and one fails to load. The four failures are not
+a preprocessing artifact on our side: re-running two of them across all four image orientations
+leaves them near $1.8$ regardless, and one is flat to three decimals across orientations, meaning
+the image barely influences its output.
+\fi
 
 \bibliographystyle{plainnat}
 \bibliography{refs}
