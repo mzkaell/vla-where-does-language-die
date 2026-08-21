@@ -1,14 +1,20 @@
-#!/usr/bin/env python
-"""M3 — binding transplant. Encoding failure or readout failure?
+"""M3 — binding transplant (CLAUDE.md §7–8): the encoding-vs-readout verdict.
 
+    # after M2 names the site, e.g.:
     python scripts/run_transplant.py --checkpoint k1000dai/smolvla_libero_finetune \
-        --device cuda --run-id transplant_finetune
+        --extract-site vlm.L8.resid_post --alphas 0.25,0.5,1.0 --device mps
 
-**Auto-targets** the site M2 found strongest, read from `results/loc_*/metrics.json`, so it
-can run unattended straight after the sweep. Override with `--site`.
+Same contrasts, states, and recovery readout as run_localization.py — the two
+milestones must be directly comparable. What M3 adds over M2's full patch: the
+injection is the working-minus-failing *delta*, at a controlled dose, optionally
+restricted to a token-position slice (--positions a:b). alpha=1, same-site, all
+positions reduces exactly to M2 for vlm.* sites (which fire once) and doubles as the
+sanity check there; on expert sites state feedback across denoising steps makes the
+alpha=1 number a different quantity from M2's recovery — do not compare them.
 
-Method and the controls that make a positive result meaningful: see
-`src/interp/transplant.py`. Verdict threshold is CLAUDE.md §8: readout if recovery ≥ 0.50.
+Cross-tower injection (extract vlm.*, inject expert.*) needs a projection between
+streams of different shapes and is deliberately NOT implemented yet; the shapes
+refuse loudly rather than broadcasting into nonsense.
 """
 
 from __future__ import annotations
@@ -18,101 +24,30 @@ import json
 import platform
 import sys
 import time
+from dataclasses import asdict
 from pathlib import Path
 
 import numpy as np
 import torch
 
-REPO_ROOT = Path(__file__).resolve().parents[1]
+REPO_ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(REPO_ROOT))
 
 from scripts.reproduce_ifr import STATE_KEYS, build_images, build_state  # noqa: E402
 from scripts.run_composition import collect_states, task_endpoints  # noqa: E402
 from scripts.run_localization import CONTRASTS  # noqa: E402
-from src.eval.composition import OBJECT_SOURCE_TASKS, build_anchors, instruction_for  # noqa: E402
-from src.eval.stats import bootstrap_mean  # noqa: E402
-from src.interp.localization import direction_cosine, net_translation  # noqa: E402
-from src.interp.transplant import (  # noqa: E402
-    TransplantPoint,
-    binding_direction,
-    inject,
-    random_direction_like,
-    verdict,
+from src.eval.composition import build_anchors, instruction_for  # noqa: E402
+from src.interp.localization import (  # noqa: E402
+    TrialBaseline,
+    direction_cosine,
+    net_translation,
 )
-
-# Sites whose "recovery" is tautological rather than informative.
-#
-# The first sweep made this concrete: expert.L15.resid_post and expert.final_norm both
-# scored recovery 1.000 with ZERO variance. That is not localization -- the action is
-# computed almost directly from the last expert residual, so patching it replaces the
-# output wholesale. It is a useful positive control (it confirms the patching machinery
-# works end to end) but selecting it as a transplant target would manufacture a confident
-# READOUT verdict out of an identity.
-#
-# The mirror case sits at the input: patching the first VLM residual is close to swapping
-# the instruction embedding itself, so high recovery there is near-definitional too.
-TRIVIAL_TAIL_LAYERS = 1  # expert layers within this many of the last
-TRIVIAL_HEAD_LAYERS = 1  # vlm layers within this many of the first
-TAUTOLOGY_RECOVERY = 0.98
-
-
-def is_trivial_site(s: dict, n_layers: int = 16) -> str | None:
-    """Reason string if this site's recovery is definitional, else None."""
-    tower, layer, comp = s.get("tower"), s.get("layer"), s.get("component")
-    r = s.get("recovery", {}).get("value")
-    if comp == "final_norm":
-        return "final norm: patching it replaces the output"
-    if tower == "expert" and layer is not None and layer >= n_layers - 1 - TRIVIAL_TAIL_LAYERS:
-        return f"expert layer {layer} sits at the output; recovery is near-definitional"
-    if tower == "vlm" and layer is not None and layer <= TRIVIAL_HEAD_LAYERS:
-        return f"vlm layer {layer} sits at the input; patching ~ swapping the instruction"
-    if r is not None and np.isfinite(r) and r >= TAUTOLOGY_RECOVERY:
-        return f"recovery {r:.3f} is at ceiling; indistinguishable from overwriting the output"
-    return None
-
-
-def pick_target_site(explicit: str | None, prefer: str = "expert") -> tuple[str, str]:
-    """M2's strongest NON-TRIVIAL site, with a loud warning if the sweep found nothing.
-
-    Refuses to silently transplant into a site the sweep could not distinguish from its
-    own null.
-    """
-    if explicit:
-        return explicit, "specified on the command line"
-
-    best, best_run, best_val, best_sig = None, None, -np.inf, False
-    any_significant = False
-    for m in sorted((REPO_ROOT / "results").glob("loc_*/metrics.json")):
-        data = json.loads(m.read_text())
-        for s in data.get("sites", []):
-            r = s.get("recovery", {}).get("value")
-            if r is None or not np.isfinite(r) or s.get("degenerate"):
-                continue
-            if is_trivial_site(s):
-                continue
-            any_significant |= bool(s.get("significant_fdr"))
-            # The hypothesis is about the VLM->expert interface, so prefer expert-side
-            # sites when they are competitive; fall back to the global best otherwise.
-            score = r + (0.05 if s.get("tower") == prefer else 0.0)
-            if score > best_val:
-                best, best_run, best_val = s["site"], m.parent.name, r
-                best_sig = bool(s.get("significant_fdr"))
-
-    if best is None:
-        raise SystemExit(
-            "No usable M2 target: no sweep has run, or every candidate was trivial "
-            "(output- or input-adjacent). Run scripts/run_localization.py, or pass --site."
-        )
-    if not any_significant:
-        print(
-            "\n!! WARNING: no site in the M2 sweep survived Benjamini-Hochberg correction.\n"
-            f"!! Targeting {best} on point estimate alone. Any verdict below is PROVISIONAL\n"
-            "!! and must not be reported as a localization result.\n",
-            file=sys.stderr,
-        )
-    prov = f"top non-trivial site from {best_run} (recovery {best_val:+.3f}"
-    prov += ", BH-significant)" if best_sig else ", NOT BH-significant)"
-    return best, prov
+from src.interp.transplant import (  # noqa: E402
+    binding_delta,
+    dosed_patch,
+    judge,
+    restrict_to_positions,
+)
 
 
 def main() -> int:
@@ -120,31 +55,51 @@ def main() -> int:
     ap.add_argument("--checkpoint", required=True)
     ap.add_argument("--suite", default="libero_goal")
     ap.add_argument("--data-root", type=Path, default=REPO_ROOT / "data" / "libero")
-    ap.add_argument("--site", default=None, help="override the auto-selected M2 target")
-    ap.add_argument("--n-trials", type=int, default=40, help="states per contrast")
-    ap.add_argument("--alphas", type=float, nargs="*", default=[0.25, 0.5, 1.0, 1.5, 2.0])
+    ap.add_argument("--extract-site", required=True)
+    ap.add_argument("--inject-site", default=None, help="defaults to the extract site")
+    ap.add_argument("--alphas", default="0.25,0.5,1.0")
+    ap.add_argument(
+        "--positions", default=None, help="token slice a:b, or 'lang' for the language block"
+    )
+    ap.add_argument("--n-trials", type=int, default=10, help="states per contrast")
     ap.add_argument("--device", default="cpu")
     ap.add_argument("--seed", type=int, default=0)
-    ap.add_argument("--resamples", type=int, default=10_000)
+    ap.add_argument("--min-trials", type=int, default=5)
     ap.add_argument("--run-id", default=None)
     args = ap.parse_args()
 
-    suite_dir = args.data_root / args.suite
-    run_id = args.run_id or f"transplant_{time.strftime('%Y%m%d_%H%M%S')}"
+    inject = args.inject_site or args.extract_site
+    if args.positions == "lang" and not args.extract_site.startswith("vlm."):
+        # expert activations are action tokens; prefix arithmetic applied to them
+        # returns plausible-looking garbage positions, not an error
+        sys.exit("--positions lang is only defined for vlm.* extract sites")
+    alphas = [float(a) for a in args.alphas.split(",")]
+    if len(set(alphas)) != len(alphas):
+        # duplicates double-append every trial for that alpha: pseudo-replication
+        # that narrows the bootstrap CI and can flip 'indeterminate' to 'readout'
+        sys.exit(f"duplicate alphas in {alphas}")
+    pos = None
+    if args.positions and args.positions != "lang":
+        a, b = args.positions.split(":")
+        pos = list(range(int(a), int(b)))
+        if not pos:
+            sys.exit(f"--positions {args.positions} selects nothing")
+
+    run_id = args.run_id or f"m3_{args.extract_site.replace('.', '_')}"
     out_dir = REPO_ROOT / "results" / run_id
     out_dir.mkdir(parents=True, exist_ok=True)
-
-    torch.manual_seed(args.seed)
+    suite_dir = args.data_root / args.suite
     np.random.seed(args.seed)
+    torch.manual_seed(args.seed)
 
-    site, provenance = pick_target_site(args.site)
     anchors = build_anchors(task_endpoints(suite_dir))
 
-    from src.models.smolvla import SmolVLA, make_batch
+    from src.models.smolvla import SmolVLA, make_batch, pair_pad_length
 
-    print(f"run_id     : {run_id}")
-    print(f"checkpoint : {args.checkpoint}")
-    print(f"target site: {site}   ({provenance})")
+    print(f"run_id  : {run_id}\ncheckpoint: {args.checkpoint}")
+    print(
+        f"extract : {args.extract_site}  inject: {inject}  alphas: {alphas}  pos: {args.positions}"
+    )
     model = SmolVLA.load(args.checkpoint, device=args.device)
     cfg = model.config
     keys = list(cfg.image_features)
@@ -156,30 +111,49 @@ def main() -> int:
             f"{k}: {json.dumps(v)}"
             for k, v in {
                 "run_id": run_id,
-                "experiment": "M3_binding_transplant",
+                "experiment": "M3_transplant",
                 "checkpoint": args.checkpoint,
-                "target_site": site,
-                "target_provenance": provenance,
-                "alphas": args.alphas,
+                "extract_site": args.extract_site,
+                "inject_site": inject,
+                "alphas": alphas,
+                "positions": args.positions,
                 "n_trials_per_contrast": args.n_trials,
+                "contrasts": CONTRASTS,
+                "suite": args.suite,
+                "data_root": str(args.data_root),
+                "min_trials": args.min_trials,
                 "seed": args.seed,
                 "device": args.device,
                 "image_orientation": "rot180",
                 "state_composition": list(STATE_KEYS),
                 "platform": platform.platform(),
+                "torch": torch.__version__,
             }.items()
         ),
         encoding="utf-8",
     )
 
-    pooled = [t for ts in OBJECT_SOURCE_TASKS.values() for t in ts]
+    cosp: dict[float, list[float]] = {a: [] for a in alphas}
+    disp_per_alpha: dict[float, list[float]] = {a: [] for a in alphas}
+    baselines: list[TrialBaseline] = []  # one per scored trial, shared by every alpha
+    skipped = 0
+    t0, n_done = time.time(), 0
 
-    # ---- pass 1: collect activations and baselines -------------------------------
-    est_w, est_f, trials = [], [], []
+    from src.eval.composition import OBJECT_SOURCE_TASKS
+
+    # contrast-invariant: same pooled tasks and seed every time, so collect once
+    pooled = [t for ts in OBJECT_SOURCE_TASKS.values() for t in ts]
+    states = collect_states(suite_dir, pooled, args.n_trials, args.seed)[: args.n_trials]
+
     for contrast in CONTRASTS:
-        dest = contrast["target"]
+        dest = contrast["destination"]
         anchor = anchors[dest]
-        for st in collect_states(suite_dir, pooled, args.n_trials, args.seed)[: args.n_trials]:
+        instr_w = instruction_for(contrast["working_object"], dest)
+        instr_f = instruction_for(contrast["failing_object"], dest)
+        pad_len = pair_pad_length(model.policy, [instr_w, instr_f])
+        print(f"\ncontrast: '{dest}'  ({len(states)} states)", flush=True)
+
+        for st in states:
             obs = {k: st[k] for k in ("agentview_rgb", "eye_in_hand_rgb")}
             obs |= {k: st[k] for k in STATE_KEYS}
             images = build_images(obs, keys, size)
@@ -187,83 +161,118 @@ def main() -> int:
             ee = np.asarray(st["ee_pos"], dtype=np.float64)
             noise = model.make_noise(1)
 
-            bw = make_batch(images, state_t, instruction_for(*contrast["working"]),
-                            model.policy, args.device)
-            bf = make_batch(images, state_t, instruction_for(*contrast["failing"]),
-                            model.policy, args.device)
+            batch_w = make_batch(
+                images, state_t, instr_w, model.policy, args.device, pad_to_length=pad_len
+            )
+            batch_f = make_batch(
+                images, state_t, instr_f, model.policy, args.device, pad_to_length=pad_len
+            )
 
-            rw = model.forward_with_cache(bw, sites=[site], noise=noise)
-            rf = model.forward_with_cache(bf, sites=[site], noise=noise)
-            cw = direction_cosine(net_translation(model.unnormalize_action(rw.action)), ee, anchor)
-            cf = direction_cosine(net_translation(model.unnormalize_action(rf.action)), ee, anchor)
-            if not (np.isfinite(cw) and np.isfinite(cf)) or (cw - cf) <= 0.05:
+            run_w = model.forward_with_cache(batch_w, sites=[args.extract_site], noise=noise)
+            run_f = model.forward_with_cache(batch_f, sites=[args.extract_site], noise=noise)
+
+            cos_w = direction_cosine(
+                net_translation(model.unnormalize_action(run_w.action)), ee, anchor
+            )
+            cos_f = direction_cosine(
+                net_translation(model.unnormalize_action(run_f.action)), ee, anchor
+            )
+            base = TrialBaseline(
+                trial_id=f"{st['task']}__{st['demo']}__t{st['t']}__{dest}",
+                cos_working=cos_w,
+                cos_failing=cos_f,
+                headroom=cos_w - cos_f,
+                ee_pos=ee,
+                anchor=anchor,
+            )
+            if not base.usable:
+                skipped += 1
                 continue
-            trials.append(
-                {"batch_f": bf, "noise": noise, "ee": ee, "anchor": anchor,
-                 "cos_w": cw, "cos_f": cf, "act_f": rf.occurrences(site)}
-            )
-            est_w.append(rw.occurrences(site)[0])
-            est_f.append(rf.occurrences(site)[0])
 
-    if len(trials) < 10:
-        print(f"only {len(trials)} usable trials; need >=10", file=sys.stderr)
-        return 1
-
-    # Estimate the direction on the FIRST half, evaluate on the SECOND, so recovery cannot
-    # be memorisation of the trials that defined the direction.
-    split = len(trials) // 2
-    d = binding_direction(est_w[:split], est_f[:split])
-    d_ctrl = random_direction_like(d, seed=args.seed)
-    held_out = trials[split:]
-    print(f"trials     : {len(trials)} usable, direction from {split}, evaluated on "
-          f"{len(held_out)} held out")
-    print(f"direction  : norm {float(d.norm()):.4f}")
-
-    # ---- pass 2: sweep alpha ------------------------------------------------------
-    points = []
-    for alpha in args.alphas:
-        recs, ctrls = [], []
-        for tr in held_out:
-            for direction, sink in ((d, recs), (d_ctrl, ctrls)):
-                occ = [inject(a, direction, alpha) for a in tr["act_f"]]
-                out = model.patch(tr["batch_f"], patches={site: occ}, noise=tr["noise"])
-                c = direction_cosine(
-                    net_translation(model.unnormalize_action(out.action)), tr["ee"], tr["anchor"]
+            deltas = [
+                binding_delta(w, f)
+                for w, f in zip(
+                    run_w.occurrences(args.extract_site),
+                    run_f.occurrences(args.extract_site),
+                    strict=True,
                 )
-                if np.isfinite(c):
-                    sink.append((c - tr["cos_f"]) / (tr["cos_w"] - tr["cos_f"]))
-        if len(recs) < 5:
-            continue
-        est = bootstrap_mean(np.array(recs), resamples=args.resamples, seed=args.seed)
-        points.append(
-            TransplantPoint(
-                alpha=alpha, n=len(recs), recovery=est.value,
-                recovery_lo=est.lo, recovery_hi=est.hi,
-                control_recovery=float(np.mean(ctrls)) if ctrls else float("nan"),
-            )
+            ]
+            if pos is not None and pos[-1] >= deltas[0].shape[1]:
+                # on 'longest'-padded checkpoints the prefix length varies per
+                # contrast, so a fixed numeric slice can walk off the end (or
+                # silently name different tokens); die here, not after hours
+                sys.exit(
+                    f"--positions {args.positions} exceeds this contrast's "
+                    f"{deltas[0].shape[1]}-token activation; on variable-pad "
+                    f"checkpoints use --positions lang"
+                )
+            if args.positions == "lang":
+                from lerobot.utils.constants import OBS_LANGUAGE_TOKENS
+
+                from src.models.smolvla import language_token_positions
+
+                n_lang = batch_f[OBS_LANGUAGE_TOKENS].shape[1]
+                pos = language_token_positions(model.policy, deltas[0].shape[1], n_lang)
+            if pos is not None:
+                deltas = [restrict_to_positions(d, pos) for d in deltas]
+
+            for alpha in alphas:
+                patched = model.patch(
+                    batch_f, patches={inject: dosed_patch(deltas, alpha)}, noise=noise
+                )
+                d = net_translation(model.unnormalize_action(patched.action))
+                cosp[alpha].append(direction_cosine(d, ee, anchor))
+                disp_per_alpha[alpha].append(float(np.linalg.norm(d)))
+            baselines.append(base)
+
+            n_done += 1
+            if n_done == 1 or n_done % 5 == 0:
+                per = (time.time() - t0) / n_done
+                todo = len(CONTRASTS) * len(states) - n_done
+                print(
+                    f"    trial {n_done}  ({per:.1f}s/trial, eta {per * todo / 60:.1f} min)",
+                    flush=True,
+                )
+
+    verdicts = [
+        judge(
+            args.extract_site,
+            inject,
+            a,
+            cosp[a],
+            baselines,
+            disp_per_alpha[a],
+            seed=args.seed,
+            min_trials=args.min_trials,
         )
-        print(f"  alpha={alpha:<5g} recovery {est.value:+.3f} [{est.lo:+.3f},{est.hi:+.3f}]  "
-              f"random-direction control {points[-1].control_recovery:+.3f}")
+        for a in alphas
+    ]
 
-    v = verdict(points)
-    payload = {
-        "target_site": site,
-        "target_provenance": provenance,
-        "n_trials_total": len(trials),
-        "n_held_out": len(held_out),
-        "direction_norm": float(d.norm()),
-        "points": [p.as_dict() for p in points],
-        **v,
-    }
-    (out_dir / "metrics.json").write_text(json.dumps(payload, indent=2), encoding="utf-8")
+    print("\n" + "=" * 60 + "\nM3 TRANSPLANT\n" + "=" * 60)
+    print(f"trials used {n_done}  skipped {skipped} (no headroom)")
+    for v in verdicts:
+        flags = " DEGENERATE" if v.degenerate else ""
+        flags += f" dropped={v.n_dropped_nonfinite}" if v.n_dropped_nonfinite else ""
+        print(
+            f"  alpha={v.alpha:<5} recovery {v.recovery_mean:+.3f} "
+            f"[{v.recovery_lo:+.3f},{v.recovery_hi:+.3f}]  n={v.n}  -> {v.verdict}{flags}"
+        )
 
-    print("\n" + "=" * 74)
-    print(f"M3 BINDING TRANSPLANT  ->  {v['verdict']}")
-    print("=" * 74)
-    print(v["reason"])
+    (out_dir / "metrics.json").write_text(
+        json.dumps(
+            {
+                "verdicts": [asdict(v) for v in verdicts],
+                "n_trials_used": n_done,
+                "n_skipped": skipped,
+            },
+            indent=2,
+            default=str,
+        ),
+        encoding="utf-8",
+    )
     print(f"\nwritten -> {out_dir}")
     return 0
 
 
 if __name__ == "__main__":
-    raise SystemExit(main())
+    sys.exit(main())

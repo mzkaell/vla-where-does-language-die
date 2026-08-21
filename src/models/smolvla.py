@@ -30,6 +30,7 @@ from __future__ import annotations
 
 import contextlib
 from collections.abc import Iterator, Mapping, Sequence
+from functools import lru_cache
 from pathlib import Path
 from typing import Any
 
@@ -498,12 +499,81 @@ def load_norm_stats(checkpoint: str, device: str = "cpu") -> dict[str, Tensor]:
 # ---------------------------------------------------------------- input building
 
 
+@lru_cache(maxsize=4)
+def _tokenizer(vlm_model_name: str):
+    """One tokenizer per process. Constructing it per call re-reads the tokenizer
+    files (and can touch the hub) inside the trial hot loop — CLAUDE.md §11 says
+    cache aggressively."""
+    from transformers import AutoTokenizer
+
+    return AutoTokenizer.from_pretrained(vlm_model_name)
+
+
+def _prep_tasks(instructions: Sequence[str]) -> list[str]:
+    """The newline rule shared by pair_pad_length and make_batch. It must be ONE
+    function: pair_pad_length's padding guarantee only holds if it tokenizes
+    exactly the strings make_batch will feed the model."""
+    return [t if t.endswith("\n") else t + "\n" for t in instructions]
+
+
+def pair_pad_length(policy: Any, instructions: Sequence[str]) -> int | None:
+    """Common token length for a set of instructions that will be patched across.
+
+    Cross-run patching needs equal prefix lengths. Checkpoints that pad language to
+    a fixed `tokenizer_max_length` already have them; checkpoints trained with
+    `pad_language_to='longest'` do not, and forcing them to the fixed length is NOT
+    behaviour-neutral (measured: actions move by up to 0.02). Padding the *pair* to
+    its own longest is -- the model saw exactly that under batched 'longest' padding
+    in training. Returns None when the checkpoint's native mode already aligns.
+    """
+    cfg = policy.config
+    if cfg.pad_language_to == "max_length":
+        return None
+    tok = _tokenizer(cfg.vlm_model_name)
+    enc = tok(_prep_tasks(instructions), padding="longest",
+              max_length=cfg.tokenizer_max_length, truncation=True, return_tensors="pt")
+    return int(enc["input_ids"].shape[1])
+
+
+def language_token_positions(policy: Any, prefix_len: int, n_lang_tokens: int) -> list[int]:
+    """Positions of the language tokens inside a VLM prefix of `prefix_len` tokens.
+
+    lerobot 0.6.0 `embed_prefix` builds the prefix as [image tokens][language tokens]
+    [one state token], so the language block is the n_lang_tokens slice ending one
+    position before the end. Only valid with `add_image_special_tokens=False` (true of
+    every checkpoint this repo uses); with special tokens the image block grows by two
+    tokens per image and this arithmetic would silently point at the wrong slice, so
+    the assert is load-bearing.
+    """
+    if policy.config.add_image_special_tokens:
+        raise ValueError(
+            "prefix layout assumes no image special tokens; recompute for this checkpoint"
+        )
+    # lerobot pads the prefix AFTER the state token when its unpadded length is
+    # below config.prefix_length, which would make 'state is last' false. Padding
+    # can only have happened if the observed length equals the configured target
+    # (non-positive targets never pad; an observed length above the target was
+    # never padded), so that is the one case to refuse.
+    target = getattr(policy.config, "prefix_length", -1)
+    if target > 0 and prefix_len <= target:
+        raise ValueError(
+            f"prefix of {prefix_len} tokens may be padded to prefix_length={target}; "
+            "'state is last' no longer holds and this slice would silently shift"
+        )
+    end = prefix_len - 1  # the state token is last
+    start = end - n_lang_tokens
+    if start < 0:
+        raise ValueError(f"{n_lang_tokens} language tokens cannot fit in prefix of {prefix_len}")
+    return list(range(start, end))
+
+
 def make_batch(
     images: Tensor | Mapping[str, Tensor],
     state: Tensor,
     instruction: str | Sequence[str],
     policy: Any,
     device: str | torch.device = "cpu",
+    pad_to_length: int | None = None,
 ) -> Batch:
     """Build a SmolVLA input batch.
 
@@ -521,18 +591,24 @@ def make_batch(
         OBS_LANGUAGE_TOKENS,
         OBS_STATE,
     )
-    from transformers import AutoTokenizer
 
     cfg = policy.config
-    tok = AutoTokenizer.from_pretrained(cfg.vlm_model_name)
+    tok = _tokenizer(cfg.vlm_model_name)
 
-    tasks = [instruction] if isinstance(instruction, str) else list(instruction)
-    tasks = [t if t.endswith("\n") else t + "\n" for t in tasks]
+    tasks = _prep_tasks([instruction] if isinstance(instruction, str) else list(instruction))
+    if pad_to_length is not None and not 0 < pad_to_length <= cfg.tokenizer_max_length:
+        # 0 must error, not silently fall back to native padding (which would
+        # resurrect the cross-run shape mismatch this parameter exists to fix),
+        # and a length above the checkpoint's cap would feed it more language
+        # tokens than it was ever configured for
+        raise ValueError(
+            f"pad_to_length={pad_to_length} outside (0, {cfg.tokenizer_max_length}]"
+        )
     enc = tok(
         tasks,
-        padding=cfg.pad_language_to,
+        padding="max_length" if pad_to_length is not None else cfg.pad_language_to,
         padding_side="right",
-        max_length=cfg.tokenizer_max_length,
+        max_length=pad_to_length if pad_to_length is not None else cfg.tokenizer_max_length,
         truncation=True,
         return_tensors="pt",
     )

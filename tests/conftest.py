@@ -12,6 +12,15 @@ import torch
 CHECKPOINT = "lerobot/smolvla_base"
 
 
+# The two fixture instructions tokenize to different lengths (12 vs 13 with the
+# SmolVLM2 tokenizer). Cross-run patching tests must pad the pair to a common
+# length exactly like the runners do, or they pass only on 'max_length'-padded
+# checkpoints and reproduce the production shape-mismatch on 'longest' ones.
+PAIR_INSTRUCTIONS = [
+    "pick up the black bowl and put it on the plate",
+    "pick up the red mug and put it on the plate",
+]
+
 @pytest.fixture(scope="session")
 def model():
     """Real SmolVLA-450M on CPU. Skips (does not fail) if weights are unavailable."""
@@ -27,7 +36,7 @@ def model():
 @pytest.fixture(scope="session")
 def batch(model):
     """A fixed, deterministic input batch. Content is arbitrary but stable."""
-    from src.models.smolvla import make_batch
+    from src.models.smolvla import make_batch, pair_pad_length
 
     cfg = model.config
     g = torch.Generator().manual_seed(1234)
@@ -41,15 +50,16 @@ def batch(model):
     return make_batch(
         images=images,
         state=state,
-        instruction="pick up the black bowl and put it on the plate",
+        instruction=PAIR_INSTRUCTIONS[0],
         policy=model.policy,
+        pad_to_length=pair_pad_length(model.policy, PAIR_INSTRUCTIONS),
     )
 
 
 @pytest.fixture(scope="session")
 def alt_batch(model):
     """Same scene, different instruction -- the minimal contrastive manipulation."""
-    from src.models.smolvla import make_batch
+    from src.models.smolvla import make_batch, pair_pad_length
 
     cfg = model.config
     g = torch.Generator().manual_seed(1234)  # same seed => identical pixels and state
@@ -63,6 +73,7 @@ def alt_batch(model):
     return make_batch(
         images=images,
         state=state,
-        instruction="pick up the red mug and put it on the plate",
+        instruction=PAIR_INSTRUCTIONS[1],
         policy=model.policy,
+        pad_to_length=pair_pad_length(model.policy, PAIR_INSTRUCTIONS),
     )

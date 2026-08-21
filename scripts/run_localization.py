@@ -94,6 +94,13 @@ def main() -> int:
     ap.add_argument("--data-root", type=Path, default=REPO_ROOT / "data" / "libero")
     ap.add_argument("--n-trials", type=int, default=40, help="states per contrast")
     ap.add_argument("--sites-limit", type=int, default=None, help="first N sites (smoke test)")
+    ap.add_argument("--components", default=None,
+                    help="comma-separated component filter, e.g. 'resid_post' or "
+                         "'resid_post,final_norm'. Cuts cost ~4x while keeping the full "
+                         "depth profile of both towers, which is what the drop-off "
+                         "question needs. Applied before --sites-limit.")
+    ap.add_argument("--towers", default=None,
+                    help="comma-separated tower filter: 'vlm', 'expert', or both")
     ap.add_argument("--device", default="cpu")
     ap.add_argument("--seed", type=int, default=0)
     ap.add_argument("--resamples", type=int, default=10_000)
@@ -126,7 +133,7 @@ def main() -> int:
     contrasts = CONTRASTS if args.contrast_mode == "novel" else CONTROL_CONTRASTS
     anchors = build_anchors(task_endpoints(suite_dir))
 
-    from src.models.smolvla import SmolVLA, make_batch
+    from src.models.smolvla import SmolVLA, make_batch, pair_pad_length
 
     print(f"run_id     : {run_id}")
     print(f"checkpoint : {args.checkpoint}")
@@ -138,7 +145,26 @@ def main() -> int:
     sdim = cfg.robot_state_feature.shape[0]
 
     sites = model.sites()
-    if args.sites_limit:
+    # names validate against the model's FULL site table, not the residue of an
+    # earlier filter -- otherwise a valid tower name can be refused as "unknown"
+    # just because the component filter emptied it first
+    known_components = {s.component for s in sites}
+    known_towers = {s.tower for s in sites}
+    if args.components:
+        wanted = {c.strip() for c in args.components.split(",")}
+        if wanted - known_components:
+            sys.exit(f"unknown component(s) {sorted(wanted - known_components)}; "
+                     f"known: {sorted(known_components)}")
+        sites = [s for s in sites if s.component in wanted]
+    if args.towers:
+        wanted_towers = {c.strip() for c in args.towers.split(",")}
+        if wanted_towers - known_towers:
+            sys.exit(f"unknown tower(s) {sorted(wanted_towers - known_towers)}; "
+                     f"known: {sorted(known_towers)}")
+        sites = [s for s in sites if s.tower in wanted_towers]
+    if not sites:
+        sys.exit("the filter combination selects zero sites")
+    if args.sites_limit is not None:
         sites = sites[: args.sites_limit]
     print(f"sites      : {len(sites)}   norm stats: {model.has_norm_stats}")
 
@@ -153,6 +179,8 @@ def main() -> int:
                 "n_sites": len(sites),
                 "contrast_mode": args.contrast_mode,
                 "contrasts": contrasts,
+                "components_filter": getattr(args, "components", None),
+                "towers_filter": getattr(args, "towers", None),
                 "seed": args.seed,
                 "fdr": args.fdr,
                 "device": args.device,
@@ -186,6 +214,13 @@ def main() -> int:
         states = collect_states(suite_dir, pooled, args.n_trials, args.seed)[: args.n_trials]
         wo, wd = contrast["working"]
         fo, fd = contrast["failing"]
+        instr_w = instruction_for(wo, wd)
+        instr_f = instruction_for(fo, fd)
+        # 'longest'-padded checkpoints need the pair padded to a common length or
+        # cross-run patches fail on a token-dim mismatch (see pair_pad_length). Our
+        # checkpoints use max_length/48 so this is a no-op for them, but the control
+        # contrasts pair instructions with different word counts, so keep the guard.
+        pad_len = pair_pad_length(model.policy, [instr_w, instr_f])
         print(
             f"\ntarget '{dest}' | working: {wo} -> {wd} | failing: {fo} -> {fd} "
             f"({len(states)} states)"
@@ -200,12 +235,12 @@ def main() -> int:
             noise = model.make_noise(1)
 
             batch_w = make_batch(
-                images, state_t, instruction_for(*contrast["working"]),
-                model.policy, args.device,
+                images, state_t, instr_w, model.policy, args.device,
+                pad_to_length=pad_len,
             )
             batch_f = make_batch(
-                images, state_t, instruction_for(*contrast["failing"]),
-                model.policy, args.device,
+                images, state_t, instr_f, model.policy, args.device,
+                pad_to_length=pad_len,
             )
 
             site_names = [s.name for s in sites]

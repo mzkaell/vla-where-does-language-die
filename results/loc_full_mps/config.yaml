@@ -1,0 +1,15 @@
+run_id: "loc_full_mps"
+experiment: "M2_localization"
+checkpoint: "k1000dai/smolvla_libero_finetune"
+n_trials_per_contrast: 40
+n_sites: 130
+components_filter: null
+towers_filter: null
+contrasts: [{"destination": "the rack", "working_object": "wine bottle", "failing_object": "bowl"}, {"destination": "the plate", "working_object": "bowl", "failing_object": "wine bottle"}, {"destination": "the stove", "working_object": "bowl", "failing_object": "wine bottle"}]
+seed: 0
+fdr: 0.05
+device: "mps"
+image_orientation: "rot180"
+state_composition: ["ee_pos", "ee_ori", "gripper_states"]
+platform: "macOS-15.6.1-arm64-arm-64bit"
+torch: "2.11.0"

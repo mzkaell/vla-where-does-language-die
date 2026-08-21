@@ -18,6 +18,12 @@ before drawing conclusions from any single file here.
 | `comp_scratch80k` | Same, second checkpoint | **superseded** |
 | `fs_finetune` | Condition 3 with the **fixed-state control**, paired | **headline** |
 | `fs_scratch80k` | Same, second checkpoint | **headline — replication** |
+| `loc_full_mps` | **M2 full sweep**, 130 sites, n=40/contrast, MPS | **current** — graded VLM decay 0.73→0.00; diffuse; nothing clears BH |
+| `m3_L4_lang` / `m3_L4_all` | M3 transplant at vlm.L4, lang-only vs whole prefix | **current** — lang block carries ~all signal; partial doses hurt |
+| `m3_L0_lang` / `m3_L12_lang` | M3 lang-block transplant, depth pair | **current** — 0.74 at L0 → 0.37 at L12; decays with depth |
+| `loc_scratch80k_resid_cpu` | M2 replication, 2nd checkpoint, resid sites | **current** — shape reproduces (n=8, within-family) |
+| `_loc_smoke` | M2 smoke, CPU, first 8 sites, n=3 | **smoke only** — sizes the sweep, answers nothing |
+| `_loc_smoke_mps` | Same smoke on MPS | **smoke only** — same ranking; resid sites within 0.02, mlp up to 0.21; 24× faster |
 
 ## Which numbers to quote
 
@@ -28,10 +34,19 @@ uncontrolled measurement can inflate.
 
 ## Not present yet
 
-`loc_*` (M2 causal localization) and the M3 binding transplant. The sweep is implemented and
-smoke-tested (`scripts/run_localization.py`) but needs a GPU — ~144 forward passes per trial
-across 130 sites, roughly 27 CPU-hours versus ~1 GPU-hour. **No M2 numbers exist anywhere in
-this repo**; anything you see referring to localization is a plan, not a result.
+OpenVLA cross-architecture, an independent (non-k1000dai) checkpoint, and
+closed-loop confirmation do not exist. Historical note kept
+for the record: this section previously said M2/M3 needed a GPU. The GPU assumption in earlier
+versions of this note is dead: MPS runs 24× faster than CPU, so the full 130-site, n=40 sweep
+costs ~3 h on an M-series laptop. Agreement, stated precisely (an earlier version of this
+note claimed a blanket "within 0.02", which the committed metrics contradict): site ranking
+is identical; the four resid sites — the ones carrying the recovery signal — agree within
+0.014; the small/noisy attn_out and mlp_out values differ by 0.03–0.21 and the null mean by
+0.15. Cross-backend agreement on noisy negative sites is NOT established, which is a caveat
+any MPS-run map inherits for those components. (The old "27 CPU-hours" figure was also 2.5×
+optimistic against the measured CPU rate of ~16 s/forward.)
+The smoke runs are sizing data only — 8 early-VLM sites, n=6 usable trials, nothing
+significant after BH. **No full-sweep M2 numbers exist in this repo yet.**
 
 ## Retracted
 

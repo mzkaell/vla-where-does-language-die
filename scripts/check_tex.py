@@ -1,6 +1,6 @@
 """Static sanity check on main.tex, since there is no local LaTeX to compile with."""
-import re
 import pathlib
+import re
 from collections import Counter
 
 paper = pathlib.Path("c:/Users/schma/vla-where-does-language-die/paper")

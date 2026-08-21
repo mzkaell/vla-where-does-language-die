@@ -1,0 +1,173 @@
+{
+  "summary": {
+    "n_sites": 8,
+    "n_scored": 8,
+    "n_degenerate": 0,
+    "n_significant_fdr": 0,
+    "top_sites": [
+      "vlm.L0.resid_pre",
+      "vlm.L0.resid_post",
+      "vlm.L1.resid_pre",
+      "vlm.L1.resid_post",
+      "vlm.L0.attn_out",
+      "vlm.L1.mlp_out",
+      "vlm.L1.attn_out",
+      "vlm.L0.mlp_out"
+    ],
+    "max_recovery": 0.7095385931004999,
+    "effect_share_in_top_10pct": 0.2437530314857246,
+    "localization_narrow": false,
+    "by_tower": {
+      "vlm": 0.08656956572057851
+    },
+    "by_component": {
+      "attn_out": -0.1754856793799618,
+      "mlp_out": -0.8657103047906433,
+      "resid_post": 0.6831893865767964,
+      "resid_pre": 0.7042848604761227
+    },
+    "n_trials_used": 6,
+    "n_trials_skipped_no_headroom": 3,
+    "null_n": 48,
+    "null_mean": -1.166264291646885,
+    "mean_headroom": 0.46184964924299976
+  },
+  "sites": [
+    {
+      "site": "vlm.L0.resid_pre",
+      "tower": "vlm",
+      "component": "resid_pre",
+      "layer": 0,
+      "n": 6,
+      "recovery": {
+        "value": 0.7095385931004999,
+        "lo": 0.3657522591060219,
+        "hi": 0.9754873277987643
+      },
+      "cos_patched_mean": 0.8285740250113632,
+      "displacement_mean": 15.374048892757465,
+      "degenerate": false,
+      "p_vs_null": 0.08163265306122448,
+      "significant_fdr": false
+    },
+    {
+      "site": "vlm.L0.attn_out",
+      "tower": "vlm",
+      "component": "attn_out",
+      "layer": 0,
+      "n": 6,
+      "recovery": {
+        "value": 0.13594286497067062,
+        "lo": 0.04153008088795888,
+        "hi": 0.23352409604533234
+      },
+      "cos_patched_mean": 0.48536288491026797,
+      "displacement_mean": 7.783378893503226,
+      "degenerate": false,
+      "p_vs_null": 0.22448979591836735,
+      "significant_fdr": false
+    },
+    {
+      "site": "vlm.L0.mlp_out",
+      "tower": "vlm",
+      "component": "mlp_out",
+      "layer": 0,
+      "n": 6,
+      "recovery": {
+        "value": -1.6227039559790768,
+        "lo": -3.857288087678589,
+        "hi": 0.3043348805966127
+      },
+      "cos_patched_mean": 0.20467975232237332,
+      "displacement_mean": 8.881962201092175,
+      "degenerate": false,
+      "p_vs_null": 0.7142857142857143,
+      "significant_fdr": false
+    },
+    {
+      "site": "vlm.L0.resid_post",
+      "tower": "vlm",
+      "component": "resid_post",
+      "layer": 0,
+      "n": 6,
+      "recovery": {
+        "value": 0.6990311278517454,
+        "lo": 0.34186401499724184,
+        "hi": 0.9753771094894313
+      },
+      "cos_patched_mean": 0.8248859727354331,
+      "displacement_mean": 15.2946517934217,
+      "degenerate": false,
+      "p_vs_null": 0.08163265306122448,
+      "significant_fdr": false
+    },
+    {
+      "site": "vlm.L1.resid_pre",
+      "tower": "vlm",
+      "component": "resid_pre",
+      "layer": 1,
+      "n": 6,
+      "recovery": {
+        "value": 0.6990311278517454,
+        "lo": 0.34186401499724184,
+        "hi": 0.9753771094894313
+      },
+      "cos_patched_mean": 0.8248859727354331,
+      "displacement_mean": 15.2946517934217,
+      "degenerate": false,
+      "p_vs_null": 0.08163265306122448,
+      "significant_fdr": false
+    },
+    {
+      "site": "vlm.L1.attn_out",
+      "tower": "vlm",
+      "component": "attn_out",
+      "layer": 1,
+      "n": 6,
+      "recovery": {
+        "value": -0.4869142237305942,
+        "lo": -1.3987771811700362,
+        "hi": 0.07396241112671391
+      },
+      "cos_patched_mean": 0.3694166479227881,
+      "displacement_mean": 7.478825802762591,
+      "degenerate": false,
+      "p_vs_null": 0.46938775510204084,
+      "significant_fdr": false
+    },
+    {
+      "site": "vlm.L1.mlp_out",
+      "tower": "vlm",
+      "component": "mlp_out",
+      "layer": 1,
+      "n": 6,
+      "recovery": {
+        "value": -0.10871665360220979,
+        "lo": -0.5070824551384198,
+        "hi": 0.19727018962479545
+      },
+      "cos_patched_mean": 0.43800787901555305,
+      "displacement_mean": 6.570286520665278,
+      "degenerate": false,
+      "p_vs_null": 0.3673469387755102,
+      "significant_fdr": false
+    },
+    {
+      "site": "vlm.L1.resid_post",
+      "tower": "vlm",
+      "component": "resid_post",
+      "layer": 1,
+      "n": 6,
+      "recovery": {
+        "value": 0.6673476453018475,
+        "lo": 0.2719714118383286,
+        "hi": 0.9645891810973076
+      },
+      "cos_patched_mean": 0.7998931476613204,
+      "displacement_mean": 15.70825880507797,
+      "degenerate": false,
+      "p_vs_null": 0.10204081632653061,
+      "significant_fdr": false
+    }
+  ]
+}
