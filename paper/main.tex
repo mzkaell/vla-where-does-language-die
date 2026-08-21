@@ -25,7 +25,8 @@
 \usepackage{xcolor}
 \usepackage{graphicx}
 
-\title{Instruction Grounding in Vision-Language-Action Models Fails\\Compositionally, Not Globally}
+\title{What Compositional Grounding Failure in VLAs Is \emph{Not}:\\
+Two Nulls, a Substitution Signature, and the Controls Between Them}
 
 \author{%
   Anonymous \\
@@ -36,23 +37,24 @@
 \maketitle
 
 \begin{abstract}
-Vision-language-action models (VLAs) are widely reported to under-use their language input.
-We ask \emph{when} this happens. Using minimal contrastive pairs on LIBERO-Goal---identical
-observations, instructions differing in exactly one referent---we find that a LIBERO-finetuned
-SmolVLA follows instructions well in the conditions such failures are usually attributed to:
-$0.745$ on neutral states, and $0.93$--$0.95$ when caught mid-trajectory and commanded to
-redirect, where the visual context actively opposes the instruction. Grounding fails only when
-the instruction requires \emph{composition}. Commanding a pairing of familiar words never
-demonstrated in training (``put the bowl on the rack'') degrades accuracy by $0.19$--$0.25$
-under a paired control that holds the observation fixed and varies only the object word,
-replicated across both publicly available competent checkpoints. Errors are structured:
-$93$--$96\%$ send the arm to a destination that object \emph{was} trained with, indicating
-substitution of a memorised pairing. A 130-site causal patching sweep did \textbf{not} localize
-this failure, and we show its apparent structure is reproduced by a control in which no failure
-exists. A linear probe confirms the instruction is encoded in the vision-language backbone, but
-its expert-level results do not replicate across checkpoints, so we report no
-readout-versus-encoding verdict. We release the stimulus generator, a checkpoint competence
-gate, and the controls that caught five false positives in our own pipeline.
+That vision-language-action models fail on undemonstrated object--destination pairings is
+already established~\citep{brittle,scaleup}. We ask what that failure is \emph{not}, and what it
+costs to measure it correctly. Using minimal contrastive pairs on LIBERO-Goal---identical
+observations, instructions differing in exactly one referent---we find the failure is narrower
+than a vision-dominance account predicts. When the arm already carries an object toward one goal
+and is commanded to another, so the visual context actively opposes the instruction, a
+LIBERO-finetuned SmolVLA redirects on $0.946$ $[0.917, 0.971]$ of trials; on neutral states it
+follows at $0.745$ $[0.703, 0.788]$. Language wins in precisely the regime where it is reported
+to lose~\citep{notallfeatures}. Failure appears only under composition, and it is structured:
+$93$--$96\%$ of errors send the arm to a destination that object \emph{was} trained with---a
+substitution, not a lapse of attention. We then report two negative results together with the
+controls that establish them. A 130-site causal patching sweep appears to localize the failure
+until an identical sweep on a contrast with \emph{no} failure to recover reproduces the same
+profile; $0$ of $130$ sites survive correction. A linear probe finds the instruction encoded in
+the backbone but gives expert-level results that invert between checkpoints. We release the
+stimulus generator, a checkpoint competence gate---only $2$ of $8$ public checkpoints are
+usable---and five measurement artifacts that produced clean, significant, wrong numbers in our
+own pipeline.
 \end{abstract}
 
 \section{Introduction}
@@ -63,37 +65,57 @@ literature reports that they under-use the language and default to visual
 priors~\citep{better,icbench,liberocf,robosem}. This matters because the instruction is the
 entire control interface: a policy that ignores the words is not steerable.
 
-That literature establishes \emph{that} failures occur, largely in aggregate. It says much less
-about \emph{when}---under which linguistic demands grounding holds and under which it breaks.
-The gap is consequential for mechanistic work, which needs a condition that reliably elicits the
-failure before it can localize anything.
+\citet{brittle} establish the compositional case directly on SmolVLA: held-out
+object--location pairings fail because success rests on correlations that do not transfer.
+\citet{scaleup} report the same across six models. We take that finding as given. Our
+question is what it is \emph{not}---which competing accounts of the failure survive contact
+with a control---and what it costs to measure such things without fooling yourself.
+
+That second question is not rhetorical. Every intuitive measurement we built here returned a
+clean, significant, plausible number that later proved to be an artifact, and each was caught
+only by a check capable of contradicting it.
 
 We probe with minimal contrastive pairs: identical observations, instructions differing in
-exactly one referent, so any change in the predicted action is attributable to the swapped word.
-Across three regimes of increasing linguistic demand, grounding holds in the two where prior work
-would predict failure---including direct visual--motor conflict---and breaks only under
-composition. The error pattern identifies the mechanism as substitution of a memorised pairing,
-i.e.\ an object$\leftrightarrow$destination \emph{binding} failure rather than a failure to
-attend to language.
+exactly one referent, so any change in the predicted action is attributable to the swapped
+word. Three regimes of increasing linguistic demand separate the accounts. A vision-dominance
+account predicts failure when the visual context opposes the instruction; we find the opposite,
+with the policy redirecting mid-trajectory on $94\%$ of trials. An attention-lapse account
+predicts unstructured error; we find $93$--$96\%$ of errors landing on a destination that object
+\emph{was} trained with. What remains is substitution of a memorised pairing---an
+object$\leftrightarrow$destination \emph{binding} failure.
 
 \paragraph{Contributions.}
 \begin{enumerate}\itemsep0pt
-\item A controlled localization of \emph{when} VLA grounding fails: compositionally, not
-  globally. Two null regimes are evidence, not discarded attempts.
-\item A released, gate-validated contrastive stimulus generator, and a reference-free directional
-  readout that makes undemonstrated commands scoreable.
-\item A competence gate showing only 2 of 8 public LIBERO SmolVLA checkpoints are usable at all.
-\item A negative localization result \emph{with the control that establishes it as negative},
-  and a probe showing the instruction is encoded while the expert-level picture fails to
-  replicate across checkpoints.
+\item Evidence that the failure is \emph{not} vision-dominance: under direct visual--motor
+  conflict the policy follows language at $0.946$, in the regime where it is reported to be
+  ignored~\citep{notallfeatures}.
+\item A substitution signature ($93$--$96\%$ of errors on a memorised destination for that
+  object), characterising the structure of a failure previously reported only as a rate.
+\item A checkpoint competence gate: only 2 of 8 public LIBERO SmolVLA checkpoints are usable,
+  and four score worse than predicting an unrelated trajectory.
+\item Two negative results shipped \emph{with} the controls that establish them, and five
+  measurement artifacts that produced clean, significant, wrong numbers in our own pipeline.
+\item A released, gate-validated contrastive stimulus generator, plus a reference-free
+  directional readout that makes undemonstrated commands scoreable.
 \end{enumerate}
 
 \section{Related work}
 \label{sec:related}
 
-\paragraph{Behavioural failures in VLAs.} \citet{better,icbench,liberocf,robosem} report
-instruction under-use. These characterise aggregate rates rather than isolating the linguistic
-operation that fails, so they do not say which manipulations reliably elicit it.
+\paragraph{The compositional failure is established; we build on it.} \citet{brittle} show
+held-out object--location pairings fail on SmolVLA and $\pi_{0.5}$, and \citet{scaleup} find
+memorised factor associations across six models. Both are behavioural and report the failure as
+a rate. We add what a rate cannot distinguish: which mechanism produces it, and which competing
+accounts a control rules out. \citet{better,icbench,liberocf,robosem} report instruction
+under-use more broadly.
+
+\paragraph{Interpretability of VLA grounding.} \citet{notallfeatures} run activation injection
+on six models including SmolVLA and report that language sensitivity depends on task structure,
+with a probe decoding a prompt at $99.3\%$ while behaviour ignores it. That probe result is
+$\pi_{0.5}$-specific and correlational; our attempt to reproduce the analogous result on SmolVLA
+inverted between checkpoints, which we report rather than resolve. Their layer interventions act
+on visual and full-pathway activations, so where \emph{language} influence is lost remains open;
+they name compositional instructions as future work.
 
 \paragraph{Compositional generalisation.} Studied extensively in language-only and navigation
 settings~\citep{scan,gscan}, and much less in continuous-control policies whose output is a

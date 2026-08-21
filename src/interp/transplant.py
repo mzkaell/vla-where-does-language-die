@@ -147,3 +147,44 @@ def judge(
         extract_site, inject_site, alpha, int(r.size), est.value, est.lo, est.hi, verdict,
         degenerate, n_dropped,
     )
+
+
+def norm_matched_random_delta(delta: Tensor, seed: int = 0) -> Tensor:
+    """A random delta with the same norm as the real one, for the control arm.
+
+    Without this, a positive recovery cannot be told apart from "injecting a vector of
+    this magnitude perturbs the run." That distinction is the whole claim: the transplant
+    is supposed to work *because of what the delta contains*, not because something of
+    that size was added.
+
+    It is a floor, not a ceiling. It does not address the deeper confound that a delta
+    taken between instructions differing in the object word carries object identity as
+    well as binding -- see `OBJECT_IDENTITY_CONFOUND` below.
+    """
+    import torch
+
+    g = torch.Generator(device="cpu").manual_seed(seed)
+    r = torch.randn(delta.shape, generator=g, dtype=torch.float32).to(delta.device)
+    return (r * (delta.float().norm() / r.norm().clamp_min(1e-8))).to(delta.dtype)
+
+
+OBJECT_IDENTITY_CONFOUND = """
+Known limitation of this contrast, which no dose or position restriction removes.
+
+The delta is taken between, e.g.
+
+    working:  put the wine bottle on the rack   (trained)
+    failing:  put the bowl on the rack          (novel)
+
+These differ in the OBJECT word, so the delta encodes object identity alongside any
+binding. Injecting it partly tells the failing run "you are holding a wine bottle."
+Movement toward the rack afterwards is then recovery-by-changing-the-instruction, not
+recovery-by-repairing-a-binding, and the two are not separable in this design.
+
+Restricting to language positions localizes the injection but does not fix this -- the
+object token sits inside the language block.
+
+The design that would separate them holds the words fixed and contrasts trials where the
+SAME novel instruction succeeds against trials where it fails (the policy gets novel
+pairings right roughly a third of the time, so both exist). Not yet implemented.
+"""
