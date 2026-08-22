@@ -221,8 +221,18 @@ wandering.
 one yields an apparently clean picture: VLM influence decaying with depth, expert influence
 rising toward the output. It is an artifact of causal proximity. Running the identical sweep on a
 \emph{control} contrast---both instructions trained, no failure to recover---reproduces the same
-profile (Fig.~\ref{fig:sweep}). Novel minus control has mean $-0.056$, and \textbf{0 of 130 sites
-survive Benjamini--Hochberg correction} in either run.
+profile (Fig.~\ref{fig:sweep}). Novel minus control has mean $-0.056$, replicated at a second
+trial count ($+0.046$), and \textbf{0 of 130 sites survive Benjamini--Hochberg correction} in
+either run.
+
+The mechanism is structural, and specific to this architecture. The action expert reads the
+backbone through \emph{per-layer} KV entries, so a patch at VLM layer $i$ can only reach the
+cache entries $i{+}1 \ldots 15$: a patch at layer 2 propagates through thirteen downstream
+layers, one at layer 14 through none. The decay therefore measures how much of the network sits
+downstream of the tap, not how much instruction information survives to that depth. Any
+encoder--decoder VLA whose decoder cross-attends per layer has the same confound, and reporting
+such a profile without a matched control will produce a graded, monotone, entirely spurious
+localization.
 
 \paragraph{Probing: encoded, but no replicable mechanism.} A linear probe trained on trained
 pairings and tested on novel ones, with a label-shuffled control at every site and a
