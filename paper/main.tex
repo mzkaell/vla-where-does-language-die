@@ -43,6 +43,10 @@
 \usepackage{microtype}
 \usepackage{xcolor}
 \usepackage{graphicx}
+% Figures live at the repo root (figures/), one level above this file, but on Overleaf
+% they are usually uploaded as a sibling folder. List both so the same source compiles
+% in either layout instead of failing on a missing file.
+\graphicspath{{../figures/}{figures/}{./}}
 
 \title{What Compositional Grounding Failure in VLAs Is \emph{Not}:\\
 Two Nulls, a Substitution Signature, and the Controls Between Them}
