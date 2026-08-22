@@ -314,6 +314,17 @@ removing it, since the object token sits inside the language block. No dose or p
 fixes it. \emph{Not yet fixed}: the design that would separate the two holds the words fixed and
 contrasts trials where the same novel instruction succeeds against trials where it fails.
 
+\paragraph{Determinism, and which backend to distrust.} Because flow-matching noise is pinned
+and the instrumented forward is exercised against the stock implementation, the pipeline is
+exactly reproducible: the full 130-site sweep run on CPU and on an A100 agrees to
+\textbf{$0.0000$ maximum absolute difference across all 130 sites}. That matters for reading
+the one backend that does \emph{not} agree---on Apple MPS we measured attention and MLP sites
+diverging from CPU by up to $0.21$, while residual-stream sites agreed to $0.014$. Exact
+CPU/CUDA agreement localises that to the MPS kernels rather than to the method, which is the
+difference between a caveat that bounds a result and one that merely worries about it. Anyone
+running interpretability sweeps on Apple silicon should check this before trusting per-site
+numbers.
+
 \paragraph{What generalises.} A layer $\times$ component heatmap offers fewer opportunities to
 visibly contradict itself than a scalar does. We would now require, before interpreting any such
 map: a competence gate on the checkpoint, a matched control condition in which the effect being
