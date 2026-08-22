@@ -243,3 +243,93 @@ def aggregate(outcomes: list[CompositionOutcome], resamples: int = 10_000, seed:
             for obj in sorted({o.obj for o in outcomes})
         },
     }
+
+
+def demo_of(trial_id: str) -> str:
+    """Cluster label for the bootstrap: the demonstration a trial's state came from.
+
+    trial_id is `task__demo__t<step>__object__destination`, so the first two fields
+    identify the episode. States from one episode share a scene and object placement and
+    sit at adjacent timesteps, so they are not independent observations.
+    """
+    parts = trial_id.split("__")
+    return "__".join(parts[:2]) if len(parts) >= 2 else trial_id
+
+
+def substitution_excess(
+    outcomes: list[dict[str, Any]],
+    resamples: int = 10_000,
+    seed: int = 0,
+) -> dict[str, Any]:
+    """How often novel-command errors land on a trained destination, ABOVE CHANCE.
+
+    The raw rate is not interpretable on its own, and reporting it alone overstates the
+    result badly. For `bowl -> the rack`, bowl was trained on the other three
+    destinations, so *every* possible wrong answer is a trained one and the raw rate is
+    100% by construction. Pooled across our cells the chance floor is ~0.83, against a raw
+    rate of ~0.94 -- an excess of about 0.10, not the 0.94 the raw number suggests.
+
+    Per trial we compute the fraction of the wrong answers that are trained for that
+    object, which is that trial's chance level, and report observed minus chance with a
+    demonstration-clustered CI.
+    """
+    from src.eval.stats import bootstrap_mean
+
+    errs = [o for o in outcomes if o.get("novel") and not o.get("correct")]
+    if len(errs) < 5:
+        return {"n_errors": len(errs), "insufficient": True}
+
+    dests = list(DESTINATIONS)
+    hit, chance, groups = [], [], []
+    for o in errs:
+        trained = TRAINED[o["object"]]
+        wrong = [d for d in dests if d != o["named_destination"]]
+        hit.append(float(o["chosen_destination"] in trained))
+        chance.append(len([d for d in wrong if d in trained]) / len(wrong))
+        groups.append(demo_of(o["trial_id"]))
+
+    hit_a, ch_a = np.array(hit), np.array(chance)
+    excess = bootstrap_mean(hit_a - ch_a, resamples=resamples, seed=seed, cluster=groups)
+    return {
+        "n_errors": len(errs),
+        "observed_rate": float(hit_a.mean()),
+        "chance_rate": float(ch_a.mean()),
+        "excess_over_chance": excess.as_dict(),
+        "cells": {
+            f"{o['object']} told '{o['named_destination']}'": round(c, 2)
+            for o, c in zip(errs, chance, strict=False)
+        },
+    }
+
+
+def named_destination_sensitivity(outcomes: list[dict[str, Any]]) -> dict[str, Any]:
+    """Does the choice on NOVEL commands depend on which destination was named?
+
+    This is the test that separates a compositional account from a fixed
+    object-conditioned prior. A policy that has simply learned "object X goes to A" would
+    produce the same distribution of chosen destinations no matter what it was told; a
+    policy doing partial composition shifts toward whatever was named.
+
+    Returns, per (object, named destination), the distribution over chosen destinations,
+    plus the diagonal rate -- how often the named destination was chosen -- which is the
+    single number that discriminates the two accounts.
+    """
+    table: dict[str, dict[str, float]] = {}
+    diagonal: dict[str, float] = {}
+    for obj in sorted({o["object"] for o in outcomes if o.get("novel")}):
+        for named in sorted(
+            {o["named_destination"] for o in outcomes if o.get("novel") and o["object"] == obj}
+        ):
+            sel = [
+                o for o in outcomes
+                if o.get("novel") and o["object"] == obj and o["named_destination"] == named
+            ]
+            if not sel:
+                continue
+            counts: dict[str, int] = {}
+            for o in sel:
+                counts[o["chosen_destination"]] = counts.get(o["chosen_destination"], 0) + 1
+            key = f"{obj} told '{named}'"
+            table[key] = {k: v / len(sel) for k, v in sorted(counts.items(), key=lambda x: -x[1])}
+            diagonal[key] = counts.get(named, 0) / len(sel)
+    return {"distribution": table, "chose_the_named_destination": diagonal}

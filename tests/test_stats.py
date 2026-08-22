@@ -155,3 +155,54 @@ class TestBenjaminiHochberg:
     def test_rejects_out_of_range(self):
         with pytest.raises(ValueError, match=r"\[0, 1\]"):
             benjamini_hochberg([0.5, 1.5])
+
+
+class TestClusterBootstrap:
+    """The cluster bootstrap exists because our trials are not independent.
+
+    Several states come from one demonstration episode -- same scene, same object
+    placement, adjacent timesteps -- so an unclustered interval is narrower than the data
+    earns. These tests pin the property that makes it worth having.
+    """
+
+    def _clustered_data(self, n_groups=20, per_group=8, seed=0):
+        """Strong within-group correlation: every member shares its group's value."""
+        rng = np.random.default_rng(seed)
+        group_effect = rng.normal(size=n_groups)
+        x, g = [], []
+        for i, eff in enumerate(group_effect):
+            x.extend(eff + rng.normal(scale=0.01, size=per_group))
+            g.extend([i] * per_group)
+        return np.array(x), np.array(g)
+
+    def test_clustering_widens_the_interval(self):
+        """The headline property. Without it the CI is a fiction."""
+        x, g = self._clustered_data()
+        naive = bootstrap_mean(x, resamples=2000, seed=0)
+        clustered = bootstrap_mean(x, resamples=2000, seed=0, cluster=g)
+        naive_w = naive.hi - naive.lo
+        clustered_w = clustered.hi - clustered.lo
+        assert clustered_w > naive_w * 1.5, (
+            f"clustered width {clustered_w:.4f} should far exceed naive {naive_w:.4f} when "
+            "every group's members are near-identical; if it does not, the cluster "
+            "resampling is not actually resampling groups"
+        )
+
+    def test_point_estimate_is_unchanged(self):
+        x, g = self._clustered_data()
+        assert bootstrap_mean(x, resamples=500, seed=0, cluster=g).value == pytest.approx(
+            bootstrap_mean(x, resamples=500, seed=0).value
+        )
+
+    def test_one_observation_per_cluster_matches_naive(self):
+        """With singleton clusters the two are the same procedure."""
+        rng = np.random.default_rng(1)
+        x = rng.normal(size=200)
+        a = bootstrap_mean(x, resamples=4000, seed=7, cluster=np.arange(x.size))
+        b = bootstrap_mean(x, resamples=4000, seed=7)
+        assert a.lo == pytest.approx(b.lo, abs=0.05)
+        assert a.hi == pytest.approx(b.hi, abs=0.05)
+
+    def test_mismatched_cluster_length_raises(self):
+        with pytest.raises(ValueError, match="cluster has"):
+            bootstrap_mean(np.zeros(10), cluster=np.zeros(3))

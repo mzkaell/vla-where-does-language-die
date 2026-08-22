@@ -72,8 +72,20 @@ def bootstrap_mean(
     resamples: int = DEFAULT_RESAMPLES,
     alpha: float = DEFAULT_ALPHA,
     seed: int | np.random.Generator | None = 0,
+    cluster: ArrayLike | None = None,
 ) -> Estimate:
-    """Percentile bootstrap CI for the mean of `x` (already-paired differences)."""
+    """Percentile bootstrap CI for the mean of `x` (already-paired differences).
+
+    `cluster` gives each observation a group label and switches to a **cluster
+    bootstrap**: whole groups are resampled with replacement rather than individual
+    observations.
+
+    This matters here and is easy to get wrong. Our trials are drawn from demonstration
+    episodes, several states per episode, and states from one episode are strongly
+    correlated -- same scene, same object placement, adjacent timesteps. Treating them as
+    independent understates the variance, sometimes badly, so an interval computed without
+    clustering is narrower than the data earns. Pass the demonstration id.
+    """
     arr = np.asarray(x, dtype=np.float64).ravel()
     n = arr.size
     if n == 0:
@@ -84,6 +96,23 @@ def bootstrap_mean(
         raise ValueError("resamples must be >= 1")
 
     rng = _rng(seed)
+
+    if cluster is not None:
+        groups = np.asarray(cluster).ravel()
+        if groups.size != n:
+            raise ValueError(f"cluster has {groups.size} labels for {n} observations")
+        uniq = np.unique(groups)
+        members = [np.flatnonzero(groups == g) for g in uniq]
+        means = np.empty(resamples, dtype=np.float64)
+        for r in range(resamples):
+            picked = rng.integers(0, len(members), size=len(members))
+            means[r] = arr[np.concatenate([members[i] for i in picked])].mean()
+        lo, hi = np.quantile(means, [alpha / 2.0, 1.0 - alpha / 2.0])
+        return Estimate(
+            value=float(arr.mean()), lo=float(lo), hi=float(hi),
+            n=n, resamples=resamples, alpha=alpha,
+        )
+
     idx = rng.integers(0, n, size=(resamples, n))
     means = arr[idx].mean(axis=1)
     lo, hi = np.quantile(means, [alpha / 2.0, 1.0 - alpha / 2.0])

@@ -1,0 +1,336 @@
+{
+  "note": "demonstration-clustered CIs throughout",
+  "runs": {
+    "fs_finetune": {
+      "substitution": {
+        "n_errors": 198,
+        "observed_rate": 0.9444444444444444,
+        "chance_rate": 0.8333333333333335,
+        "excess_over_chance": {
+          "value": 0.1111111111111111,
+          "lo": 0.07326007326007328,
+          "hi": 0.14428275290215586,
+          "n": 198,
+          "resamples": 10000,
+          "alpha": 0.05,
+          "excludes_zero": true
+        },
+        "cells": {
+          "bowl told 'the rack'": 1.0,
+          "wine bottle told 'the plate'": 0.67,
+          "wine bottle told 'the stove'": 0.67
+        }
+      },
+      "named_destination_sensitivity": {
+        "distribution": {
+          "bowl told 'the rack'": {
+            "the stove": 0.54,
+            "top of the cabinet": 0.35,
+            "the plate": 0.1,
+            "the rack": 0.01
+          },
+          "wine bottle told 'the plate'": {
+            "top of the cabinet": 0.51,
+            "the plate": 0.45,
+            "the stove": 0.04
+          },
+          "wine bottle told 'the stove'": {
+            "the stove": 0.56,
+            "top of the cabinet": 0.35,
+            "the plate": 0.07,
+            "the rack": 0.02
+          }
+        },
+        "chose_the_named_destination": {
+          "bowl told 'the rack'": 0.01,
+          "wine bottle told 'the plate'": 0.45,
+          "wine bottle told 'the stove'": 0.56
+        }
+      },
+      "gap_all_destinations": {
+        "trained": {
+          "mean": 0.698,
+          "n": 500,
+          "ci": [
+            0.66,
+            0.736
+          ]
+        },
+        "novel": {
+          "mean": 0.34,
+          "n": 300,
+          "ci": [
+            0.2833333333333333,
+            0.3933333333333333
+          ]
+        },
+        "gap": 0.35799999999999993,
+        "gap_ci": [
+          0.29200000000000004,
+          0.42466666666666664
+        ]
+      },
+      "gap_excluding_rack": {
+        "trained": {
+          "mean": 0.79,
+          "n": 400,
+          "ci": [
+            0.7525,
+            0.8275
+          ]
+        },
+        "novel": {
+          "mean": 0.505,
+          "n": 200,
+          "ci": [
+            0.42,
+            0.585
+          ]
+        },
+        "gap": 0.28500000000000003,
+        "gap_ci": [
+          0.19500000000000006,
+          0.37500000000000006
+        ]
+      },
+      "gap_per_destination": {
+        "the plate": {
+          "trained": {
+            "mean": 0.55,
+            "n": 100,
+            "ci": [
+              0.46,
+              0.64
+            ]
+          },
+          "novel": {
+            "mean": 0.45,
+            "n": 100,
+            "ci": [
+              0.37,
+              0.53
+            ]
+          },
+          "gap": 0.10000000000000003,
+          "gap_ci": [
+            -0.020000000000000018,
+            0.22000000000000003
+          ]
+        },
+        "the stove": {
+          "trained": {
+            "mean": 0.89,
+            "n": 100,
+            "ci": [
+              0.83,
+              0.94
+            ]
+          },
+          "novel": {
+            "mean": 0.56,
+            "n": 100,
+            "ci": [
+              0.46,
+              0.66
+            ]
+          },
+          "gap": 0.32999999999999996,
+          "gap_ci": [
+            0.20999999999999996,
+            0.44999999999999996
+          ]
+        },
+        "the rack": {
+          "trained": {
+            "mean": 0.33,
+            "n": 100,
+            "ci": [
+              0.24,
+              0.42
+            ]
+          },
+          "novel": {
+            "mean": 0.01,
+            "n": 100,
+            "ci": [
+              0.0,
+              0.03
+            ]
+          },
+          "gap": 0.32,
+          "gap_ci": [
+            0.22999999999999998,
+            0.41
+          ]
+        }
+      },
+      "n_demonstrations": 50
+    },
+    "fs_scratch80k": {
+      "substitution": {
+        "n_errors": 194,
+        "observed_rate": 0.9278350515463918,
+        "chance_rate": 0.8298969072164949,
+        "excess_over_chance": {
+          "value": 0.09793814432989692,
+          "lo": 0.056140350877193,
+          "hi": 0.13432899279114632,
+          "n": 194,
+          "resamples": 10000,
+          "alpha": 0.05,
+          "excludes_zero": true
+        },
+        "cells": {
+          "bowl told 'the rack'": 1.0,
+          "wine bottle told 'the plate'": 0.67,
+          "wine bottle told 'the stove'": 0.67
+        }
+      },
+      "named_destination_sensitivity": {
+        "distribution": {
+          "bowl told 'the rack'": {
+            "the stove": 0.63,
+            "top of the cabinet": 0.25,
+            "the plate": 0.07,
+            "the rack": 0.05
+          },
+          "wine bottle told 'the plate'": {
+            "top of the cabinet": 0.51,
+            "the plate": 0.34,
+            "the stove": 0.09,
+            "the rack": 0.06
+          },
+          "wine bottle told 'the stove'": {
+            "the stove": 0.67,
+            "top of the cabinet": 0.16,
+            "the rack": 0.12,
+            "the plate": 0.05
+          }
+        },
+        "chose_the_named_destination": {
+          "bowl told 'the rack'": 0.05,
+          "wine bottle told 'the plate'": 0.34,
+          "wine bottle told 'the stove'": 0.67
+        }
+      },
+      "gap_all_destinations": {
+        "trained": {
+          "mean": 0.678,
+          "n": 500,
+          "ci": [
+            0.65,
+            0.704
+          ]
+        },
+        "novel": {
+          "mean": 0.35333333333333333,
+          "n": 300,
+          "ci": [
+            0.31,
+            0.39666666666666667
+          ]
+        },
+        "gap": 0.3246666666666667,
+        "gap_ci": [
+          0.2733333333333334,
+          0.37734999999999985
+        ]
+      },
+      "gap_excluding_rack": {
+        "trained": {
+          "mean": 0.77,
+          "n": 400,
+          "ci": [
+            0.735,
+            0.8025
+          ]
+        },
+        "novel": {
+          "mean": 0.505,
+          "n": 200,
+          "ci": [
+            0.43,
+            0.58
+          ]
+        },
+        "gap": 0.265,
+        "gap_ci": [
+          0.18499999999999994,
+          0.35000000000000003
+        ]
+      },
+      "gap_per_destination": {
+        "the plate": {
+          "trained": {
+            "mean": 0.52,
+            "n": 100,
+            "ci": [
+              0.44,
+              0.6
+            ]
+          },
+          "novel": {
+            "mean": 0.34,
+            "n": 100,
+            "ci": [
+              0.27,
+              0.41
+            ]
+          },
+          "gap": 0.18,
+          "gap_ci": [
+            0.07,
+            0.29
+          ]
+        },
+        "the stove": {
+          "trained": {
+            "mean": 0.81,
+            "n": 100,
+            "ci": [
+              0.74,
+              0.88
+            ]
+          },
+          "novel": {
+            "mean": 0.67,
+            "n": 100,
+            "ci": [
+              0.57,
+              0.77
+            ]
+          },
+          "gap": 0.14,
+          "gap_ci": [
+            0.020000000000000018,
+            0.26
+          ]
+        },
+        "the rack": {
+          "trained": {
+            "mean": 0.31,
+            "n": 100,
+            "ci": [
+              0.21,
+              0.41
+            ]
+          },
+          "novel": {
+            "mean": 0.05,
+            "n": 100,
+            "ci": [
+              0.01,
+              0.1
+            ]
+          },
+          "gap": 0.26,
+          "gap_ci": [
+            0.15999999999999998,
+            0.36000000000000004
+          ]
+        }
+      },
+      "n_demonstrations": 50
+    }
+  }
+}
