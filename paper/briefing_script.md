@@ -1,5 +1,24 @@
 # Project briefing — talking script
 
+
+> ## ⚠️ Superseded by the review re-analysis (2026-08-22)
+>
+> Two claims below are **corrected** in `paper/main.tex` and
+> `results/reanalysis/metrics.json`. This document is kept for provenance; cite the paper.
+>
+> **The "93–96% substitution" figure is inflated.** Its chance floor is **0.83**: for
+> `bowl → rack` the bowl was trained on the other three destinations, so *every* possible
+> wrong answer is a trained one by construction and that cell reads 1.00 whatever the policy
+> does. Excess over chance is **+0.111 [0.073, 0.144]** and **+0.098 [0.056, 0.134]**.
+>
+> **"Substitution" overstates it.** On novel commands the chosen destination still tracks the
+> one named — the bottle told "the plate" goes there on 0.45 of trials, told "the stove" on
+> 0.56 — which a fixed object-conditioned prior cannot produce. The supported claim is
+> *partial compositional generalization with a trained-destination bias*, not a memorised
+> lookup, and not an identified binding mechanism.
+>
+> All intervals are now **demonstration-clustered**; unclustered ones were too narrow.
+
 *~6 minutes spoken. Every number here traces to a committed run in `results/`.
 Square brackets are 95% bootstrap CIs.*
 

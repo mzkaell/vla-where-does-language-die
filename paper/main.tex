@@ -48,8 +48,8 @@
 % in either layout instead of failing on a missing file.
 \graphicspath{{../figures/}{figures/}{./}}
 
-\title{What Compositional Grounding Failure in VLAs Is \emph{Not}:\\
-Two Nulls, a Substitution Signature, and the Controls Between Them}
+\title{Partial Composition, Not Blind Substitution:\\
+Decomposing a Grounding Failure in Vision-Language-Action Models}
 
 \author{%
   Anonymous \\
@@ -69,14 +69,18 @@ and is commanded to another, so the visual context actively opposes the instruct
 LIBERO-finetuned SmolVLA redirects on $0.946$ $[0.917, 0.971]$ of trials; on neutral states it
 follows at $0.745$ $[0.703, 0.788]$. Language wins in precisely the regime where it is reported
 to lose~\citep{notallfeatures}. Failure appears only under composition, and it is structured:
-$93$--$96\%$ of errors send the arm to a destination that object \emph{was} trained with---a
-substitution, not a lapse of attention. We then report two negative results together with the
+errors are biased toward destinations that object \emph{was} trained with, by
+$+0.11$ $[0.07, 0.14]$ and $+0.10$ $[0.06, 0.13]$ over the rate expected if it erred at
+random. But the failure is not blind substitution: which destination the policy chooses still
+tracks \emph{which one was named}, at $0.34$--$0.67$ depending on the command, where a fixed
+object-conditioned prior predicts no such dependence. The policy composes, unreliably.
+We then report two negative results together with the
 controls that establish them. A 130-site causal patching sweep appears to localize the failure
 until an identical sweep on a contrast with \emph{no} failure to recover reproduces the same
 profile; $0$ of $130$ sites survive correction. A linear probe finds the instruction encoded in
 the backbone but gives expert-level results that invert between checkpoints. We release the
 stimulus generator, a checkpoint competence gate---only $2$ of $8$ public checkpoints are
-usable---and five measurement artifacts that produced clean, significant, wrong numbers in our
+usable---and six measurement artifacts that produced clean, significant, wrong numbers in our
 own pipeline.
 \end{abstract}
 
@@ -100,23 +104,32 @@ only by a check capable of contradicting it.
 
 We probe with minimal contrastive pairs: identical observations, instructions differing in
 exactly one referent, so any change in the predicted action is attributable to the swapped
-word. Three regimes of increasing linguistic demand separate the accounts. A vision-dominance
-account predicts failure when the visual context opposes the instruction; we find the opposite,
-with the policy redirecting mid-trajectory on $94\%$ of trials. An attention-lapse account
-predicts unstructured error; we find $93$--$96\%$ of errors landing on a destination that object
-\emph{was} trained with. What remains is substitution of a memorised pairing---an
-object$\leftrightarrow$destination \emph{binding} failure.
+word. Successive accounts are then eliminated. A \emph{vision-dominance} account predicts
+failure when the visual context opposes the instruction; we find the opposite, with the policy
+redirecting mid-trajectory on $94\%$ of trials. An \emph{attention-lapse} account predicts
+unstructured error; errors are instead biased toward the object's trained destinations by
+$+0.10$ over chance. A fixed \emph{object-conditioned prior} predicts that the chosen
+destination should not depend on the command; it does, at $0.34$--$0.67$. What remains is a
+partial competence: the policy composes familiar words into undemonstrated pairings, but far
+less reliably than it executes demonstrated ones, and in one case ($\textrm{bowl} \to
+\textrm{rack}$) essentially never.
+
+We do \emph{not} claim to have identified an object$\leftrightarrow$destination binding
+mechanism. That is one interpretation of the pattern; establishing it would require showing
+the relation is represented and causally drives the substituted action, which our two
+mechanistic analyses (\S\ref{sec:exp}) fail to do.
 
 \paragraph{Contributions.}
 \begin{enumerate}\itemsep0pt
 \item Evidence that the failure is \emph{not} vision-dominance: under direct visual--motor
   conflict the policy follows language at $0.946$, in the regime where it is reported to be
   ignored~\citep{notallfeatures}.
-\item A substitution signature ($93$--$96\%$ of errors on a memorised destination for that
-  object), characterising the structure of a failure previously reported only as a rate.
+\item Evidence that it is \emph{not} a fixed object-conditioned prior either: on
+  undemonstrated pairings the chosen destination still tracks the one named. The failure is
+  degraded composition rather than a memorised lookup.
 \item A checkpoint competence gate: only 2 of 8 public LIBERO SmolVLA checkpoints are usable,
   and four score worse than predicting an unrelated trajectory.
-\item Two negative results shipped \emph{with} the controls that establish them, and five
+\item Two negative results shipped \emph{with} the controls that establish them, and six
   measurement artifacts that produced clean, significant, wrong numbers in our own pipeline.
 \item A released, gate-validated contrastive stimulus generator, plus a reference-free
   directional readout that makes undemonstrated commands scoreable.
@@ -207,17 +220,38 @@ Regime & Readout & Checkpoint A & Checkpoint B \\
 \midrule
 Neutral ($n{=}400$)        & directional IFR & $0.745$ $[0.703, 0.788]$ & --- \\
 Conflict ($n{=}240$)       & directional IFR & $0.946$ $[0.917, 0.971]$ & $0.929$ $[0.896, 0.958]$ \\
-Compositional ($n{=}800$)  & destination gap & $+0.250$ $[0.197, 0.300]$ & $+0.193$ $[0.143, 0.243]$ \\
+Compositional ($n{=}800$)  & destination gap & $+0.358$ $[0.292, 0.425]$ & $+0.325$ $[0.273, 0.377]$ \\
+\quad excluding the rack   & destination gap & $+0.285$ $[0.195, 0.375]$ & $+0.265$ $[0.185, 0.350]$ \\
 \bottomrule
 \end{tabular}
 \end{table}
 
-\paragraph{The failure is compositional.} Table~\ref{tab:regimes}. Under direct visual--motor
-conflict the policy redirects on command. Under an undemonstrated pairing of familiar words it
-does not, and the gap is significant in all six destination\,$\times$\,checkpoint cells.
-Crucially, $93$--$96\%$ of novel-command errors send the arm to a destination that object
-\emph{was} trained with: the policy confidently executes a memorised pairing rather than
-wandering.
+\paragraph{Statistical unit.} All intervals resample \emph{demonstrations}, not trials. Several
+states are drawn from each episode and share a scene, an object placement and adjacent
+timesteps, so trial-level resampling understates the variance. Clustering widens every interval
+here and moves one cell (``the plate'' on checkpoint~A) from significant to not.
+
+\paragraph{The failure is compositional, and not an artifact of one hard destination.}
+Table~\ref{tab:regimes}. Under direct visual--motor conflict the policy redirects on command;
+under an undemonstrated pairing it degrades sharply. The rack is the weakest destination even
+when trained ($0.31$--$0.33$), so we report the gap with it excluded as well: the effect
+survives at $+0.285$ and $+0.265$. The cleanest single cell holds the destination word fixed
+and varies only the object---``the stove'', trained $0.890$ versus novel $0.560$.
+
+\paragraph{Errors are biased, but the policy still composes.} Novel-command errors land on a
+destination the object was trained with more often than chance, by $+0.111$ $[0.073, 0.144]$
+and $+0.098$ $[0.056, 0.134]$. \textbf{The raw rate ($0.94$) is not the effect size}: for
+$\textrm{bowl} \to \textrm{rack}$ the bowl was trained on the other three destinations, so
+every possible wrong answer is a trained one by construction and that cell reads $1.00$
+regardless of the policy's behaviour. Pooled chance is $0.83$.
+
+That bias is real but modest, and it does not make the behaviour a lookup. Which destination
+the policy chooses still depends on \emph{which one it was told}: the bottle commanded to
+``the plate'' goes there on $0.45$ of trials and to ``the stove'' on $0.04$; commanded to ``the
+stove'' those reverse to $0.07$ and $0.56$ (checkpoint~A; B is $0.34$/$0.67$). A fixed
+object-conditioned destination prior predicts no such dependence. The exception is
+$\textrm{bowl} \to \textrm{rack}$, chosen on $0.01$--$0.05$ of trials---the one pairing the
+policy appears unable to form at all.
 
 \paragraph{Causal patching does not localize it.} Patching all 130 sites
 ($\{\textrm{vlm},\textrm{expert}\}\times L_{0..15}\times\{\textrm{resid\_pre},
@@ -273,25 +307,42 @@ systematic \emph{sub-chance} decoding, so we assert no mechanism.}
 \section{Conclusion}
 \label{sec:conclusion}
 
-Grounding in this VLA does not fail globally---it fails at composition. Under direct
-visual--motor conflict the policy still redirects on command; under an undemonstrated pairing of
-familiar words it substitutes a memorised destination. Causal patching did not localize this, and
-a matched control shows the sweep's apparent structure is proximity rather than mechanism.
-Probing instead finds the destination present in the action expert and unused.
+Grounding in this VLA does not fail globally---it degrades at composition. Under direct
+visual--motor conflict the policy still redirects on command. Under an undemonstrated pairing of
+familiar words it succeeds far less often, with errors biased toward the object's trained
+destinations---but it has not fallen back on a lookup, because which destination it chooses
+still depends on which one it was told. What we can support is a \emph{partial} compositional
+competence, not a substitution policy and not an identified binding mechanism. Causal patching
+did not localize the degradation, and a matched control shows the sweep's apparent structure is
+proximity rather than mechanism; probing finds the destination decodable in the backbone but
+gives expert-level results that invert across checkpoints.
 
-\paragraph{Limitations.} Effect sizes are moderate and halved under the strictest control. Both
-competent checkpoints come from a single uploader, so replication is weak. LIBERO-Goal supports
-one object contrast, so results generalise over states rather than referents. Evaluation is
-offline, so ``correct'' means heading toward the named destination rather than task success.
-Finally, the probe decodes the named \emph{destination}, which is present in the input tokens; we
-have not shown that the object$\leftrightarrow$destination \emph{binding} itself is represented.
+\paragraph{Limitations.} Effect sizes are moderate. Both competent checkpoints come from a
+single uploader, so replication is weak. LIBERO-Goal affords one object contrast
+($\textrm{bowl}$ versus $\textrm{wine bottle}$), so results generalise over states rather than
+referents; this is a property of a particular SmolVLA/LIBERO configuration, not a demonstrated
+property of VLAs.
+
+Two confounds we do not resolve. First, an undemonstrated pairing lacks a demonstrated
+\emph{trajectory} as well as a demonstrated meaning, so semantic composition failure and
+motor-generation failure on unseen combinations are not separated here; distinguishing them
+needs a condition where semantic novelty and motor novelty come apart. Second, the readout
+scores whether predicted motion heads toward a destination anchor, which a geometry-only
+policy could partly reproduce---we report the named-destination dependence precisely because it
+is the part a geometry-only account cannot explain, but a full geometric null is future work.
+
+Evaluation is offline throughout: ``correct'' means directionally consistent with the named
+destination, not task success under closed-loop execution. Finally, the probe decodes the named
+\emph{destination}, which is present in the input tokens; decodability is not causal
+availability, and we have not shown that an object$\leftrightarrow$destination relation is
+represented at all.
 
 \iflong
-\section{Five measurement artifacts}
+\section{Six measurement artifacts}
 \label{sec:artifacts}
 
-Every result in this paper had a predecessor that was wrong. We report them because four of the
-five produced clean, statistically significant, entirely plausible numbers, and because the
+Every result in this paper had a predecessor that was wrong. We report them because five of the
+six produced clean, statistically significant, entirely plausible numbers, and because the
 property that caught them generalises: each was exposed by a check \emph{capable of
 contradicting the headline}, never by re-reading code.
 
@@ -338,6 +389,17 @@ CPU/CUDA agreement localises that to the MPS kernels rather than to the method, 
 difference between a caveat that bounds a result and one that merely worries about it. Anyone
 running interpretability sweeps on Apple silicon should check this before trusting per-site
 numbers.
+
+\paragraph{6. A headline statistic with an $0.83$ floor.} We reported that $93$--$96\%$ of
+novel-command errors land on a destination the object was trained with, and read it as a
+substitution signature. The number is almost entirely determined by the design. For
+$\textrm{bowl} \to \textrm{rack}$, the bowl was trained on the other three destinations, so
+\emph{every} possible wrong answer is a trained one and that cell contributes $1.00$ whatever
+the policy does. Pooled chance is $0.833$; the excess is $+0.111$ $[0.073, 0.144]$.
+\emph{Caught by} writing down the null---asking what the statistic would read if the policy
+erred uniformly at random---which we had not done because the raw number looked decisive.
+The lesson is narrow and cheap: a proportion whose denominator is constrained by the stimulus
+design needs its chance level computed from that design, not assumed to be uniform.
 
 \paragraph{What generalises.} A layer $\times$ component heatmap offers fewer opportunities to
 visibly contradict itself than a scalar does. We would now require, before interpreting any such

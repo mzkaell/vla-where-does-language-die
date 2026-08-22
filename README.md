@@ -17,11 +17,21 @@ to redirect against a strong visual prior (0.93–0.95). It fails on *novel comb
 same familiar words*: commanding "put the bowl on the rack" when only bowl→plate/stove/cabinet
 and bottle→rack were ever demonstrated.
 
-Under the strictest control (identical observation, only the object word changes, paired):
-**gap +0.250 [+0.197, +0.300] and +0.193 [+0.143, +0.243]** on the two competent public
-checkpoints, significant in all six destination × checkpoint cells. When it fails, **93–96% of
-errors send the arm to a destination that object *was* trained with** — substitution of a
-memorised pairing, i.e. an object↔destination *binding* failure.
+Under the strictest control (identical observation, only the object word changes, paired,
+**demonstration-clustered CIs**): trained→novel gap **+0.358 [+0.292, +0.425]** and
+**+0.325 [+0.273, +0.377]** on the two competent public checkpoints. The rack is the weakest
+destination even when trained, so excluding it: **+0.285** and **+0.265** — the effect is not
+one hard destination.
+
+**Errors are biased, but this is not blind substitution.** They land on a destination the
+object *was* trained with **+0.111 [0.073, 0.144]** and **+0.098 [0.056, 0.134]** above chance.
+The raw rate (0.94) is *not* the effect size: for `bowl → rack` every possible wrong answer is
+a trained one by construction, so pooled chance is 0.83. And the choice still tracks **which
+destination was named** (0.34–0.67), which a fixed object-conditioned prior cannot produce.
+
+The supported claim is *partial compositional generalization with a trained-destination bias* —
+not a memorised lookup, and **not** an identified binding mechanism. See
+[`results/reanalysis/`](results/reanalysis/).
 
 ## Start here
 
@@ -82,12 +92,16 @@ novel combinations of the same familiar words (bowl->rack, bottle->plate) breaks
 | **pooled, fixed-state control (paired)** | **+0.250 [+0.197, +0.300]** | **+0.193 [+0.143, +0.243]** |
 
 Held at a fixed destination word, so the policy's destination prior cannot explain it.
-Control passes (trained 0.74 / 0.70 vs chance 0.25), and **96-97% of novel-command errors go
-to a destination that object WAS trained with** -- substitution of a memorised pairing, the
-object-word binding signature. Replicates on both competent checkpoints.
+Control passes (trained 0.74 / 0.70 vs chance 0.25). Replicates on both competent checkpoints.
 
-Full account, including two null regimes and six measurement pitfalls:
-[`paper/m0_findings.md`](paper/m0_findings.md).
+Errors are biased toward the object's trained destinations by **+0.111 / +0.098 over chance**
+(the raw ~0.94 rate is mostly a design artifact — see the README status block above), and the
+policy still tracks the named destination on novel commands, so this is degraded composition
+rather than substitution.
+
+Current numbers: [`results/reanalysis/`](results/reanalysis/) and `paper/main.tex`. The
+narrative account in [`paper/m0_findings.md`](paper/m0_findings.md) is superseded on those two
+points and carries a banner saying so.
 
 ## Setup for teammates
 

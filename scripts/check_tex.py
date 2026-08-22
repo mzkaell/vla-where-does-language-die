@@ -5,7 +5,9 @@ from collections import Counter
 
 paper = pathlib.Path("c:/Users/schma/vla-where-does-language-die/paper")
 t = (paper / "main.tex").read_text(encoding="utf-8")
-src = re.sub(r"(?m)%.*$", "", t)
+# Strip comments, but NOT escaped percents: "$94\%$" is math, not a comment.
+# Treating \% as a comment start made the delimiter check report false odd counts.
+src = re.sub(r"(?m)(?<!\\)%.*$", "", t)
 
 print("braces balanced       :", src.count("{") == src.count("}"),
       f"({src.count('{')} open / {src.count('}')} close)")
