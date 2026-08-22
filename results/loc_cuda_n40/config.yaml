@@ -1,0 +1,16 @@
+run_id: "loc_cuda_n40"
+experiment: "M2_localization"
+checkpoint: "k1000dai/smolvla_libero_finetune"
+n_trials_per_contrast: 40
+n_sites: 130
+contrast_mode: "novel"
+contrasts: [{"target": "the rack", "working": ["wine bottle", "the rack"], "failing": ["bowl", "the rack"]}, {"target": "the plate", "working": ["bowl", "the plate"], "failing": ["wine bottle", "the plate"]}, {"target": "the stove", "working": ["bowl", "the stove"], "failing": ["wine bottle", "the stove"]}]
+components_filter: null
+towers_filter: null
+seed: 0
+fdr: 0.05
+device: "cuda"
+image_orientation: "rot180"
+state_composition: ["ee_pos", "ee_ori", "gripper_states"]
+platform: "Linux-6.17.0-1019-aws-x86_64-with-glibc2.39"
+torch: "2.11.0+cu130"
