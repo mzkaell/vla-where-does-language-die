@@ -99,6 +99,16 @@ def main() -> int:
     ap.add_argument("--device", default="cpu")
     ap.add_argument("--seed", type=int, default=0)
     ap.add_argument("--resamples", type=int, default=10_000)
+    ap.add_argument(
+        "--phrasing",
+        default="libero",
+        help=(
+            "surface form of the command. 'libero' reproduces the training phrasing; "
+            "'paraphrase' says the same thing with a different verb, preposition and "
+            "token count, to test whether the effect is semantic or an artifact of one "
+            "particular wording."
+        ),
+    )
     ap.add_argument("--run-id", default=None)
     ap.add_argument(
         "--fixed-state-control",
@@ -154,6 +164,7 @@ def main() -> int:
                 "seed": args.seed,
                 "destinations": list(DESTINATIONS),
                 "anchors": {k: [float(x) for x in v] for k, v in anchors.items()},
+                "phrasing": args.phrasing,
                 "state_composition": list(STATE_KEYS),
                 "image_orientation": "rot180",
                 "platform": platform.platform(),
@@ -192,7 +203,7 @@ def main() -> int:
             state_t = model.normalize_state(build_state(obs, sdim))
 
             for dest in anchors:
-                instruction = instruction_for(obj, dest)
+                instruction = instruction_for(obj, dest, args.phrasing)
                 batch = make_batch(images, state_t, instruction, model.policy, args.device)
                 act = model.unnormalize_action(
                     model.predict_action(batch, noise=model.make_noise(1))

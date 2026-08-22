@@ -77,8 +77,26 @@ OBJECT_SOURCE_TASKS: dict[str, list[str]] = {
 }
 
 
-def instruction_for(obj: str, destination: str) -> str:
-    return f"put the {obj} on {destination}"
+# Instruction templates. The default reproduces LIBERO's own phrasing exactly, which is
+# what the policy was trained on. The paraphrase exists to test whether the compositional
+# effect is about meaning or about one particular surface form: it differs in verb,
+# preposition, token count and tokenisation, while naming the same object and destination.
+#
+# "top of the cabinet" needs its own paraphrase because "move X to top of the cabinet"
+# is ungrammatical where "put X on top of the cabinet" is not.
+PHRASINGS: dict[str, str] = {
+    "libero": "put the {obj} on {dest}",
+    "paraphrase": "move the {obj} to {dest}",
+}
+_DEST_FIXUPS = {"paraphrase": {"top of the cabinet": "the top of the cabinet"}}
+
+
+def instruction_for(obj: str, destination: str, phrasing: str = "libero") -> str:
+    """Build the command. `phrasing` selects a surface form; semantics are unchanged."""
+    if phrasing not in PHRASINGS:
+        raise ValueError(f"unknown phrasing {phrasing!r}; have {sorted(PHRASINGS)}")
+    dest = _DEST_FIXUPS.get(phrasing, {}).get(destination, destination)
+    return PHRASINGS[phrasing].format(obj=obj, dest=dest)
 
 
 def is_novel(obj: str, destination: str) -> bool:
