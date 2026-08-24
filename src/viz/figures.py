@@ -40,32 +40,59 @@ INK_SOFT = "#52514e"
 
 
 def _style() -> None:
+    """Match the paper rather than matplotlib's defaults.
+
+    Conventions taken from the NeurIPS style file and from how figures actually read in
+    a two-column-width single-column layout:
+
+    * Serif type. The body is Times; sans-serif panels look pasted in from elsewhere.
+    * No in-plot titles. The caption carries the message, and a title above the axes
+      duplicates it and costs vertical space. Panels are identified by (a), (b), (c).
+    * Nothing below 7pt. At 3.3in wide, 6pt annotations are unreadable in print, which is
+      the most common way a technically correct figure still fails.
+    * Legible in greyscale: every series is directly labelled and marker shapes differ, so
+      colour is never the only carrier of identity.
+    """
     import matplotlib as mpl
 
     mpl.rcParams.update(
         {
-            "figure.dpi": 200,
-            "savefig.dpi": 200,
+            "figure.dpi": 400,
+            "savefig.dpi": 400,
+            "font.family": "serif",
+            "font.serif": ["Times New Roman", "DejaVu Serif"],
+            "mathtext.fontset": "stix",
             "font.size": 8,
             "axes.labelsize": 8,
-            "axes.titlesize": 8.5,
-            "xtick.labelsize": 7,
-            "ytick.labelsize": 7,
-            "legend.fontsize": 7,
+            "axes.titlesize": 8,
+            "xtick.labelsize": 7.5,
+            "ytick.labelsize": 7.5,
+            "legend.fontsize": 7.5,
             "axes.spines.top": False,
             "axes.spines.right": False,
-            "axes.edgecolor": INK_SOFT,
+            "axes.edgecolor": "#4a4a48",
+            "axes.linewidth": 0.7,
             "axes.labelcolor": INK,
             "text.color": INK,
-            "xtick.color": INK_SOFT,
-            "ytick.color": INK_SOFT,
-            "grid.color": "#e6e5e1",
-            "grid.linewidth": 0.6,
-            "lines.linewidth": 1.6,
+            "xtick.color": "#4a4a48",
+            "ytick.color": "#4a4a48",
+            "xtick.major.width": 0.7,
+            "ytick.major.width": 0.7,
+            "xtick.major.size": 2.5,
+            "ytick.major.size": 2.5,
+            "grid.color": "#dedcd6",
+            "grid.linewidth": 0.5,
+            "lines.linewidth": 1.5,
             "savefig.bbox": "tight",
-            "savefig.pad_inches": 0.02,
+            "savefig.pad_inches": 0.015,
         }
     )
+
+
+def _panel_label(ax, letter: str) -> None:
+    """(a), (b), (c) above the axes, the NeurIPS convention for multi-panel figures."""
+    ax.text(-0.02, 1.10, f"({letter})", transform=ax.transAxes, fontsize=9,
+            fontweight="bold", va="bottom", ha="left", color=INK)
 
 
 def _load(run: str) -> dict[str, Any] | None:
@@ -100,28 +127,25 @@ def fig_sweep(out_path: Path) -> bool:
         for a, b in zip(n, c, strict=False)
     ]
 
-    fig, ax = plt.subplots(figsize=(3.3, 2.5))
+    fig, ax = plt.subplots(figsize=(3.35, 2.45))
     ax.grid(axis="y", zorder=0)
     ax.axhline(0, color=REFERENCE, lw=0.9, zorder=1)
     ax.plot(xs, n, color=SERIES_A, marker="o", ms=3.2, zorder=3)
     ax.plot(xs, c, color=SERIES_B, marker="s", ms=3.0, zorder=3)
     ax.plot(xs, diff, color=REFERENCE, ls=":", lw=1.3, zorder=2)
 
-    # Direct labels: identity never rests on colour alone.
-    ax.annotate("novel", (15, n[15]), xytext=(3, 3), textcoords="offset points",
-                color=SERIES_A, fontsize=7, fontweight="bold")
-    ax.annotate("control", (15, c[15]), xytext=(3, -9), textcoords="offset points",
-                color=SERIES_B, fontsize=7, fontweight="bold")
-    ax.annotate("difference", (10, diff[10]), xytext=(2, -12), textcoords="offset points",
-                color=INK_SOFT, fontsize=6.5)
+    # Direct labels: identity never rests on colour alone. Anchored at layer 8, where
+    # the curves are furthest apart, rather than at the last layer -- labelling the
+    # right end pushes the text outside the axes and off the canvas.
+    ax.annotate("Control", (8, c[8]), xytext=(3, 5), textcoords="offset points",
+                color=SERIES_B, fontsize=7.5, fontweight="bold")
+    ax.annotate("Novel", (8, n[8]), xytext=(3, -12), textcoords="offset points",
+                color=SERIES_A, fontsize=7.5, fontweight="bold")
+    ax.annotate("Difference", (10, diff[10]), xytext=(2, -13), textcoords="offset points",
+                color=INK_SOFT, fontsize=7.5)
 
-    ax.set_xlabel("action-expert layer")
-    ax.set_ylabel("patching recovery (resid_post)")
-    # Accurate rather than flattering. The control does not merely resemble the novel
-    # profile -- it sits ABOVE it at every layer, so the rise toward the output cannot be
-    # the failure we are trying to localize, and the novel-specific difference is if
-    # anything negative. Claiming the curves "coincide" would overstate it.
-    ax.set_title("Recovery rises toward the output even\nwith no failure to recover", loc="left")
+    ax.set_xlabel("Action-expert layer")
+    ax.set_ylabel("Patching recovery (resid_post)")
     ax.set_xticks([0, 4, 8, 12, 15])
     fig.savefig(out_path)
     plt.close(fig)
@@ -143,23 +167,22 @@ def fig_probe(out_path: Path) -> bool:
     shuf = [S[f"expert.L{L}.resid_post"]["acc_shuffled"] for L in xs]
     chance = S["expert.L0.resid_post"]["chance"]
 
-    fig, ax = plt.subplots(figsize=(3.3, 2.5))
+    fig, ax = plt.subplots(figsize=(3.35, 2.45))
     ax.grid(axis="y", zorder=0)
     ax.axhline(chance, color=REFERENCE, lw=0.9, ls="--", zorder=1)
-    ax.annotate("chance", (11.5, chance), xytext=(0, -11), textcoords="offset points",
-                color=INK_SOFT, fontsize=6.5)
+    ax.annotate("Chance", (0.2, chance), xytext=(0, -12), textcoords="offset points",
+                color=INK_SOFT, fontsize=7.5)
     ax.plot(xs, acc, color=SERIES_A, marker="o", ms=3.2, zorder=3)
     ax.plot(xs, shuf, color=SERIES_B, marker="s", ms=3.0, zorder=3)
 
-    ax.annotate("novel pairings", (8, acc[8]), xytext=(-6, 6), textcoords="offset points",
-                color=SERIES_A, fontsize=7, fontweight="bold")
-    ax.annotate("label-shuffled", (13, shuf[13]), xytext=(-2, -11), textcoords="offset points",
-                color=SERIES_B, fontsize=7, fontweight="bold")
+    ax.annotate("Untrained pairings", (10, acc[10]), xytext=(-22, -18),
+                textcoords="offset points", color=SERIES_A, fontsize=7.5, fontweight="bold")
+    ax.annotate("Label-shuffled", (12, shuf[12]), xytext=(-20, 8),
+                textcoords="offset points", color=SERIES_B, fontsize=7.5, fontweight="bold")
 
     ax.set_ylim(0, 1.05)
-    ax.set_xlabel("action-expert layer")
-    ax.set_ylabel("destination decoding accuracy")
-    ax.set_title("The named destination reaches the\nexpert and is not acted on", loc="left")
+    ax.set_xlabel("Action-expert layer")
+    ax.set_ylabel("Destination decoding accuracy")
     ax.set_xticks([0, 4, 8, 12, 15])
     fig.savefig(out_path)
     plt.close(fig)
@@ -220,24 +243,24 @@ def fig_schematic(out_path: Path) -> bool:
     bowl_rack = [r for r in rows if r["novel"] and r["object"] == "bowl"]
     p_rack = sum(r["correct"] for r in bowl_rack) / len(bowl_rack)
 
-    fig, axes = plt.subplots(1, 3, figsize=(6.9, 2.35))
+    fig, axes = plt.subplots(1, 3, figsize=(6.9, 2.5))
 
     # ---- panel 1: the stimulus -------------------------------------------------
     ax = axes[0]
     ax.imshow(frame)
-    ax.set_xticks([]); ax.set_yticks([])
+    ax.set_xticks([])
+    ax.set_yticks([])
     for s in ax.spines.values():
         s.set_edgecolor("#c9c8c3")
-    ax.set_title("1.  One scene, one word apart", loc="left", fontsize=8, pad=6)
-    # Plain text with the differing word capitalised, not mathtext bold: "$\bf{...}$" in a
-    # non-raw string makes Python read \b as a backspace, which matplotlib then fails to
-    # parse. Capitals carry the contrast just as well and cannot break in transit.
-    ax.text(0.5, -0.10, "put the bowl on the PLATE", transform=ax.transAxes,
-            ha="center", va="top", fontsize=7.5, color=SERIES_A)
-    ax.text(0.5, -0.25, "put the bowl on the STOVE", transform=ax.transAxes,
-            ha="center", va="top", fontsize=7.5, color=SERIES_B)
-    ax.text(0.5, -0.42, "identical pixels; the action difference\nis attributable to that word",
-            transform=ax.transAxes, ha="center", va="top", fontsize=6.5, color=INK_SOFT)
+    _panel_label(ax, "a")
+    # Quoted rather than capitalised: these are the literal strings handed to the policy,
+    # and SHOUTING one word misrepresents the input. Colour plus the quotation marks carry
+    # the contrast. (Mathtext bold is avoided here -- "$\bf{...}$" in a non-raw string
+    # makes Python read \b as a backspace, which matplotlib then fails to parse.)
+    ax.text(0.5, -0.09, "“put the bowl on the plate”", transform=ax.transAxes,
+            ha="center", va="top", fontsize=8, color=SERIES_A)
+    ax.text(0.5, -0.26, "“put the bowl on the stove”", transform=ax.transAxes,
+            ha="center", va="top", fontsize=8, color=SERIES_B)
 
     # ---- panels 2 and 3 -------------------------------------------------------
     # Labels sit INSIDE each panel above their bar rather than on the y-axis. Long
@@ -247,7 +270,7 @@ def fig_schematic(out_path: Path) -> bool:
         ys = [1.0, 0.0]
         for y, (label, value, alpha) in zip(ys, rows, strict=False):
             ax.barh([y], [value], color=colour, alpha=alpha, height=0.30, zorder=3)
-            ax.text(0, y + 0.26, label, fontsize=6.8, color=INK_SOFT, va="bottom", ha="left")
+            ax.text(0, y + 0.24, label, fontsize=7.5, color=INK, va="bottom", ha="left")
             ax.text(value + 2.5, y, f"{value:.1f}".rstrip("0").rstrip("."),
                     va="center", fontsize=8, color=INK, fontweight="bold")
         ax.set_yticks([])
@@ -257,21 +280,39 @@ def fig_schematic(out_path: Path) -> bool:
         ax.set_xlabel(xlabel, fontsize=7.5)
         ax.grid(axis="x", zorder=0)
         ax.spines["left"].set_visible(False)
-        ax.set_title(title, loc="left", fontsize=8, pad=6)
+        del title
 
     _bars(axes[1],
-          [("arm already heading elsewhere", 94.6, 1.0), ("neutral state", 74.5, 0.45)],
-          SERIES_A, "follows the command (%)", "2.  Vision does not override")
+          [("Arm already heading elsewhere", 94.6, 1.0), ("Neutral state", 74.5, 0.45)],
+          SERIES_A, "Follows the command (%)", None)
+    _panel_label(axes[1], "b")
 
     _bars(axes[2],
-          [('"bottle on the plate", told plate', p_plate * 100, 1.0),
-           ('"bowl on the rack", never trained', p_rack * 100, 1.0)],
-          SERIES_B, "heads to the named place (%)", "3.  Untrained pairings degrade")
-    # Figure-level so it clears panel 3's x-axis label instead of landing on top of it.
-    fig.text(0.685, 0.015, "still tracks the command, so not a fixed lookup",
-             fontsize=6.5, color=INK_SOFT, ha="left")
+          [("Bottle to the plate (untrained)", p_plate * 100, 1.0),
+           ("Bowl to the rack (untrained)", p_rack * 100, 1.0)],
+          SERIES_B, "Heads to the named place (%)", None)
+    _panel_label(axes[2], "c")
+    fig.subplots_adjust(bottom=0.30, wspace=0.30, top=0.84)
 
-    fig.subplots_adjust(bottom=0.30, wspace=0.30, top=0.86)
+    # One caption per panel, all on a single figure-coordinate baseline. Putting them in
+    # axes coordinates does not align them: panel (a) holds a square image, so its axes
+    # box is shrunk vertically by the aspect ratio and the same transAxes offset lands at
+    # a different height than it does in (b) and (c).
+    captions = ("Identical pixels, one word apart",
+                "Vision does not override the command",
+                "Some pairings survive, others do not")
+    fig.canvas.draw()
+    for ax, cap in zip(axes, captions, strict=True):
+        box = ax.get_position()
+        t = fig.text(box.x0 + box.width / 2, 0.015, cap,
+                     fontsize=7, color=INK_SOFT, ha="center", va="bottom")
+        # The outer captions are wider than their panels, so centring them on the panel
+        # can push text off the canvas. Measure and pull it back inside.
+        w = t.get_window_extent(fig.canvas.get_renderer())
+        w = w.transformed(fig.transFigure.inverted())
+        shift = max(0.005 - w.x0, 0.0) + min(0.995 - w.x1, 0.0)
+        if shift:
+            t.set_x(t.get_position()[0] + shift)
     fig.savefig(out_path)
     plt.close(fig)
     print(f"wrote {out_path}")
