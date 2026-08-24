@@ -1,0 +1,26 @@
+{
+  "destinations": [
+    "the plate",
+    "the rack",
+    "the stove",
+    "top of the cabinet"
+  ],
+  "runs": {
+    "fs_finetune": {
+      "n_trials": 800,
+      "n_states": 100,
+      "geometry_only_accuracy": 0.5458333333333333,
+      "majority_class_floor": 0.49583333333333335,
+      "states_where_choice_varies_with_command": 0.96,
+      "n_features": 20
+    },
+    "fs_scratch80k": {
+      "n_trials": 800,
+      "n_states": 100,
+      "geometry_only_accuracy": 0.49166666666666664,
+      "majority_class_floor": 0.4125,
+      "states_where_choice_varies_with_command": 0.95,
+      "n_features": 20
+    }
+  }
+}

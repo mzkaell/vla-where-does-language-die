@@ -324,12 +324,21 @@ memorisation is a real and separable failure mode in this model family.
 \paragraph{Two confounds this design does not remove.} An undemonstrated pairing is novel in
 two ways at once: it lacks a demonstrated \emph{meaning} and a demonstrated \emph{trajectory}.
 A policy that understood the command but could not generate a motor plan for it would produce
-the same degradation, and we do not separate the two. Second, the readout scores whether
-predicted motion heads toward a destination anchor, and destination identity is correlated with
-scene geometry in a fixed layout, so a sufficiently rich geometry-conditioned policy could
-reproduce part of the pattern---including some command dependence, if command and geometry
-covary. The command dependence above is the part least readily explained that way, which is
-what motivates a direct geometric null; we have not run one.
+the same degradation, and we do not separate the two.
+
+\paragraph{Geometry alone does not account for the result.} The readout scores whether
+predicted motion heads toward a destination anchor, and in a fixed scene destination identity
+is correlated with geometry, so a policy conditioning only on where things are might reproduce
+the pattern. We tested this directly. A classifier given end-effector position, the distance
+and unit direction to every anchor, and object identity, but never the instruction, predicts
+the policy's own chosen destination at $0.546$ and $0.492$ on the two checkpoints, against
+majority-class floors of $0.496$ and $0.412$: geometry buys $5$ and $8$ percentage points over
+guessing the most frequent destination.
+
+More decisively, such a model returns a single prediction per state, whereas the policy is
+shown several instructions at each state and selects a different destination in $96\%$ and
+$95\%$ of them. That variation is the effect this paper reports, and no state-only account can
+produce any of it.
 
 \paragraph{Causal patching does not localize it.} Patching all 130 sites
 ($\{\textrm{vlm},\textrm{expert}\}\times L_{0..15}\times\{\textrm{resid\_pre},
@@ -407,10 +416,11 @@ single uploader, so replication is weak. LIBERO-Goal affords one object contrast
 referents; this is a property of a particular SmolVLA/LIBERO configuration, not a demonstrated
 property of VLAs.
 
-The two confounds stated in \S\ref{sec:exp} remain open: semantic and motor novelty covary in
-this design, and a geometry-conditioned policy could reproduce part of the pattern. Resolving
-the first needs a condition where the two come apart; the second needs a state-only null
-predicting destination from end-effector position, scene geometry and object identity alone.
+One confound stated in \S\ref{sec:exp} remains open: an untrained pairing is novel in meaning
+and in trajectory at once, so semantic composition failure and motor generation failure are not
+separated here. Resolving it needs a condition in which the two come apart. The geometric
+confound is addressed in \S\ref{sec:exp} rather than left open, though our null is a linear
+one, and a more expressive state-only model could close more of the gap.
 
 Evaluation is offline throughout: ``correct'' means directionally consistent with the named
 destination, not task success under closed-loop execution. Finally, the probe decodes the named
