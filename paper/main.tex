@@ -77,8 +77,9 @@ resulting errors are structured: they favour places the object was previously pa
 $11$ and $10$ percentage points above a uniform choice among the incorrect answers. The
 behaviour is nevertheless not a fixed object-conditioned destination lookup, because which
 place the policy heads toward still depends on which place the command names, selected on
-$34$ to $67\%$ of untrained trials. Paraphrasing the same instruction leaves the effect
-unchanged.
+$34$ to $67\%$ of untrained trials. Paraphrasing the instruction leaves the effect unchanged on
+one of the two checkpoints; on the other it degrades even the trained pairings, which we report
+as evidence that surface-form memorisation is a separable failure mode.
 
 We then report two negative results together with the controls that establish them. A
 130-site causal patching sweep appears to localize the failure, until the identical sweep on a
@@ -283,13 +284,25 @@ command-conditioned heuristics that fall short of composing the relation, and we
 otherwise. The exception is $\textrm{bowl} \to \textrm{rack}$, selected on $0.01$--$0.05$ of
 trials---the one pairing for which we see almost no evidence of successful composition.
 
-\paragraph{The effect is not tied to one phrasing.} Swapping the object word changes
-tokenisation and token count as well as meaning, so we repeated the compositional test with the
-command paraphrased: ``move the bowl to the rack'' in place of ``put the bowl on the rack'',
-altering verb, preposition and length while naming the same object and destination. The gap is
-$+0.324$ $[0.271, 0.378]$ against $+0.358$ $[0.292, 0.425]$ under LIBERO's own phrasing, and the
-dependence on the named destination is if anything stronger ($53\%$ and $69\%$ for the bottle).
-The degradation therefore does not depend on the particular string the policy was trained on.
+\paragraph{Paraphrase: robust on one checkpoint, uninformative on the other.} Swapping the
+object word changes tokenisation and token count as well as meaning, so we repeated the test
+with the command paraphrased: ``move the bowl to the rack'' in place of ``put the bowl on the
+rack'', altering verb, preposition and length while naming the same object and destination.
+
+On checkpoint~A the effect is unchanged: the gap is $+0.324$ $[0.272, 0.377]$ against $+0.358$
+$[0.292, 0.425]$ under LIBERO's own phrasing, with dependence on the named destination if
+anything stronger ($53\%$ and $69\%$ for the bottle). There, the degradation does not depend on
+the exact string.
+
+On checkpoint~B the comparison collapses, and instructively. Paraphrasing costs it not only the
+novel pairings but the \emph{trained} ones, whose accuracy falls from $0.678$ to $0.406$ --
+roughly the novel level -- leaving a gap of $-0.017$ $[-0.058, 0.025]$. The gap disappears
+because the whole comparison degrades, not because novel pairings improve. Checkpoint~B was
+trained from scratch on this task set, and this is what we would expect from a policy that has
+learned the ten LIBERO strings rather than their content: a policy that cannot restate the
+demonstrated tasks cannot be asked about undemonstrated ones. We therefore claim
+phrasing-robustness for checkpoint~A only, and read checkpoint~B as evidence that surface-form
+memorisation is a real and separable failure mode in this model family.
 
 \paragraph{Two confounds this design does not remove.} An undemonstrated pairing is novel in
 two ways at once: it lacks a demonstrated \emph{meaning} and a demonstrated \emph{trajectory}.
