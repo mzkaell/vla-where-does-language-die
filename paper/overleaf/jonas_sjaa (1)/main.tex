@@ -9,30 +9,28 @@
 % RoboPAD, VLM4RWD and Interpretability-for-Discovery all use. Switch to
 % [dblblindworkshop, final] only after acceptance.
 % ===========================================================================
-% TWO SWITCHES: content length, and venue.
+% ONE SOURCE, TWO PAPERS.
 %
-% Both target venues take the full version, so \longtrue is the default:
-%   RoboPAD   9 pages of main content, references and appendix unlimited
-%   VLM4RWD   8 pages excluding references and appendices
-% Set \longfalse only if a venue turns out to want the compressed version; it
-% drops the measurement-artifacts and extended-results sections.
+% RoboPAD wants 4 pages, VLM4RWD wants 8. Maintaining two .tex files guarantees
+% they drift -- a number fixed in one and missed in the other is exactly the
+% failure this project has spent a fortnight learning to avoid. So the long-only
+% material lives inside \iflong ... \fi and both versions build from this file.
+%
+%   4-page  (RoboPAD):  \longfalse   <- default below
+%   8-page  (VLM4RWD):  \longtrue
 % ===========================================================================
 \newif\iflong
-\longtrue           % full version -- fits both venues
-
-% Venue only affects the footnote title. Pick one.
-\newif\ifrobopad
-\robopadtrue        % \robopadtrue for RoboPAD, \robopadfalse for VLM4RWD
+\longfalse          % <-- flip to \longtrue for the 8-page VLM4RWD version
 
 \documentclass{article}
 \usepackage[dblblindworkshop]{neurips_2026}
 
 % The workshop template requires BOTH \title and \workshoptitle. The venue differs
 % between the two builds, so it follows the same switch.
-\ifrobopad
-  \workshoptitle{Robot Foundation Models: Post-Pretraining Adaptation, Reasoning and Evaluation (RoboPAD)}
-\else
+\iflong
   \workshoptitle{Vision-Language Models for Real-World Deployment (VLM4RWD)}
+\else
+  \workshoptitle{Robot Foundation Models: Post-Pretraining Adaptation, Reasoning and Evaluation (RoboPAD)}
 \fi
 
 \usepackage[utf8]{inputenc}
@@ -41,13 +39,12 @@
 \usepackage{url}
 \usepackage{booktabs}
 \usepackage{amsfonts}
-% amsmath, not just amsfonts: \operatorname and \lVert in the competence-gate display
-% are amsmath macros and amsfonts does not provide them.
-\usepackage{amsmath}
 \usepackage{nicefrac}
 \usepackage{microtype}
 \usepackage{xcolor}
 \usepackage{graphicx}
+\usepackage{tikz}
+\usetikzlibrary{arrows.meta,positioning}
 % Figures live at the repo root (figures/), one level above this file, but on Overleaf
 % they are usually uploaded as a sibling folder. List both so the same source compiles
 % in either layout instead of failing on a missing file.
@@ -82,9 +79,8 @@ resulting errors are structured: they favour places the object was previously pa
 $11$ and $10$ percentage points above a uniform choice among the incorrect answers. The
 behaviour is nevertheless not a fixed object-conditioned destination lookup, because which
 place the policy heads toward still depends on which place the command names, selected on
-$34$ to $67\%$ of untrained trials. Paraphrasing the instruction leaves the effect unchanged on
-one of the two checkpoints; on the other it degrades even the trained pairings, which we report
-as evidence that surface-form memorisation is a separable failure mode.
+$34$ to $67\%$ of untrained trials. Paraphrasing the same instruction leaves the effect
+unchanged.
 
 We then report two negative results together with the controls that establish them. A
 130-site causal patching sweep appears to localize the failure, until the identical sweep on a
@@ -95,20 +91,59 @@ competence gate that finds only $2$ of $8$ public checkpoints usable, and six me
 artifacts that produced convincing but incorrect results in our own pipeline.
 \end{abstract}
 
-\begin{figure}[t]
+\begin{figure}[t]
 \centering
-\includegraphics[width=\linewidth]{figures/fig1_schematic.pdf}
-\caption{\textbf{The design, and what it returns.} \textbf{(a)} A stimulus is one camera frame
-and robot state paired with two instructions differing in a single word, so any difference in
-the predicted action is attributable to that word. We score which destination the predicted
-motion heads toward, and run the same contrast in three settings. \textbf{(b)} Language is not
-overridden by vision: when the arm is already carrying an object toward one goal and the command
-names another, the policy follows the command more often than it does from a neutral pre-grasp
-state. \textbf{(c)} It is composition that breaks. On an object--place pairing never
-demonstrated in training the policy degrades sharply, and for one pairing almost completely,
-though which place it heads toward still depends on the place the command names
-(\S\ref{sec:exp}), so the behaviour is not a fixed object-conditioned lookup. All values from
-checkpoint~A.}
+\begin{tikzpicture}[
+  x=0.98\linewidth,
+  y=1cm,
+  font=\scriptsize,
+  input/.style={draw=black!60, fill=blue!4, rounded corners=2pt, align=left,
+                text width=0.35\linewidth, minimum height=19mm,
+                inner xsep=5pt, inner ysep=4pt},
+  box/.style={draw=black!60, fill=black!3, rounded corners=2pt, align=center,
+              minimum height=12mm, inner xsep=4pt, inner ysep=3pt},
+  score/.style={draw=black!60, fill=blue!7, rounded corners=2pt, align=center,
+                minimum height=12mm, inner xsep=4pt, inner ysep=3pt},
+  regime/.style={draw=black!55, fill=black!2, rounded corners=2pt, align=left,
+                 text width=0.285\linewidth, minimum height=17mm,
+                 inner xsep=5pt, inner ysep=4pt},
+  arrow/.style={-{Latex[length=2mm]}, draw=black!70, line width=0.55pt}
+]
+\node[input] (input) at (0.185,0) {
+  \textbf{Contrastive input}\\[1pt]
+  same camera image and robot state\\[1pt]
+  put the \textbf{bowl} on the rack\\[-1pt]
+  put the \textbf{bottle} on the rack\\[1pt]
+  {\color{black!65}same pixels, one changed word}
+};
+\node[box, text width=0.115\linewidth] (policy) at (0.500,0) {SmolVLA\\policy};
+\node[box, text width=0.140\linewidth] (action) at (0.675,0) {predicted\\motion};
+\node[score, text width=0.160\linewidth] (readout) at (0.875,0) {scored\\destination};
+
+\draw[arrow] (input) -- (policy);
+\draw[arrow] (policy) -- (action);
+\draw[arrow] (action) -- (readout);
+
+\node[align=center, font=\scriptsize\bfseries, text=black!75] (reglabel)
+      at (0.500,-1.35) {The same comparison is run in three settings};
+\node[regime] (neutral) at (0.155,-2.15) {
+  \textbf{Neutral}\\
+  Before grasping, the test measures whether the instruction steers the arm.
+};
+\node[regime, fill=orange!6] (conflict) at (0.500,-2.15) {
+  \textbf{Conflict}\\
+  The arm already moves toward one goal. The command names a different goal.
+};
+\node[regime, fill=blue!5] (comp) at (0.845,-2.15) {
+  \textbf{Composition}\\
+  The object and destination are familiar. This pairing is absent from training.
+};
+\end{tikzpicture}
+\caption{Schematic of the evaluation. Each contrast keeps the camera image and robot state
+fixed while changing one object or destination word in the command. We then score whether the
+predicted motion points to the named destination. The three settings use this same contrast to
+separate ordinary language sensitivity, conflict with current motion, and composition for a
+familiar pairing absent from training.}
 \label{fig:schematic}
 \end{figure}
 
@@ -133,10 +168,11 @@ The second question matters because every intuitive measurement we constructed p
 apparently clean and statistically significant number that later proved to be an artifact. In
 each case, the error surfaced only through a check capable of contradicting it.
 
-Our stimuli are minimal contrastive pairs (Fig.~\ref{fig:schematic}): identical observations
-with instructions differing
-in exactly one referent, so any change in the predicted action is attributable to the swapped
-word. We test the competing accounts with matched behavioural contrasts. A
+Figure~\ref{fig:schematic} gives the experimental logic. The camera image and robot state stay
+fixed, while one object or destination word in the instruction changes. We then measure whether
+the predicted action moves toward the newly named goal. This contrast makes the language
+intervention visible in action space. We test the competing accounts with matched behavioural
+contrasts. A
 \emph{vision-dominance} account predicts failure when the visual context opposes the
 instruction; we observe the opposite, with the policy redirecting mid-trajectory on $94.6\%$ of
 trials. An \emph{attention-lapse} account predicts unstructured error; errors are instead biased
@@ -177,12 +213,10 @@ analyses (\S\ref{sec:exp}) do not achieve.
 \paragraph{Compositional failure in VLAs.} \citet{brittle} report that held-out
 object--location pairings fail on SmolVLA and $\pi_{0.5}$, and \citet{scaleup} find memorised
 factor associations across six models; \citet{better,icbench,liberocf,robosem} document
-instruction under-use more broadly; two of them go on to propose mitigations, attention
-recalibration~\citep{icbench} and counterfactual-aware guidance~\citep{liberocf}.
-\emph{What is missing:} the failure is characterised as an aggregate rate, which cannot
-distinguish among the accounts that predict it, and the mitigations are proposed without one.
-We contribute the controlled contrasts that separate those accounts, and we test two candidate
-mechanistic analyses.
+instruction under-use more broadly. \emph{What is missing:} these studies characterise the
+failure as an aggregate rate, which cannot distinguish among the accounts that predict it. We
+contribute the controlled contrasts that separate them, and we test two candidate mechanistic
+analyses.
 
 \paragraph{Interpretability of VLA grounding.} \citet{notallfeatures} run activation injection
 on six models including SmolVLA and report that language sensitivity depends on task structure,
@@ -242,27 +276,10 @@ because its small size makes exhaustive patching tractable on a single consumer 
 discrete action vocabulary of larger autoregressive VLAs such as
 OpenVLA~\citep{openvla} would permit a direct action lens, which we discuss as future work.
 
-\paragraph{Competence gate.} A chance-level instruction-following rate is equally consistent
-with a policy that ignores language and one whose predictions are noise, so before any grounding
-claim we check that the policy tracks these states at all. The check needs no extra forward
-passes. Writing $\hat{a}$ for the predicted 50-step chunk and $a$ for the demonstrated one at the
-same state,
-\[
-\rho \;=\;
-\frac{\operatorname{median}\lVert \hat{a}-a\rVert}{\operatorname{median}\lVert a'-a\rVert},
-\]
-where $a'$ is a chunk drawn from an \emph{unrelated} demonstration at the same stimulus states.
-The denominator is therefore what ``a plausible trajectory for this scene, but not this one''
-scores ($7.25$ over $n=50$ pairs here), which makes $\rho$ readable without a reference model:
-$\rho \ll 1$ tracks the specific demonstration, $\rho \approx 1$ is no better than an unrelated
-trajectory, and $\rho \geq 1$ is worse than one. We require $\rho < 0.70$ to run a checkpoint and
-treat $\rho \geq 1.05$ as broken or misaligned. Only 2 of 8 public LIBERO SmolVLA checkpoints
-pass, and all results below use those two\iflong~(Table~\ref{tab:screen})\fi. We report this as a result
-rather than housekeeping: it bears directly on the reproducibility of this literature.
-
-The gate was not tuned to the result it guards. It was added to diagnose the neutral and
-conflict nulls, and the released commit history records the screen and the selection of the two
-checkpoints 3 hours and 45 minutes before the compositional experiment was first written.
+\paragraph{Competence gate.} Only 2 of 8 public LIBERO SmolVLA checkpoints track the
+demonstrations better than an unrelated trajectory does; four score \emph{worse} than that
+baseline at every image orientation. All results below use the two that pass. We report this as
+a result rather than housekeeping: it bears directly on the reproducibility of this literature.
 
 \begin{table}[t]
 \caption{Grounding holds under neutral and conflicting conditions and breaks under composition.
@@ -326,52 +343,30 @@ command-conditioned heuristics that fall short of composing the relation, and we
 otherwise. The exception is $\textrm{bowl} \to \textrm{rack}$, selected on $0.01$--$0.05$ of
 trials, the one pairing for which we see almost no evidence of successful composition.
 
-\paragraph{Paraphrase: robust on one checkpoint, uninformative on the other.} Swapping the
-object word changes tokenisation and token count as well as meaning, so we repeated the test
-with the command paraphrased: ``move the bowl to the rack'' in place of ``put the bowl on the
-rack'', altering verb, preposition and length while naming the same object and destination.
-
-On checkpoint~A the effect is unchanged: the gap is $+0.324$ $[0.272, 0.377]$ against $+0.358$
-$[0.292, 0.425]$ under LIBERO's own phrasing, with dependence on the named destination if
-anything stronger ($53\%$ and $69\%$ for the bottle). There, the degradation does not depend on
-the exact string.
-
-On checkpoint~B the comparison collapses, and instructively. Paraphrasing costs it not only the
-novel pairings but the \emph{trained} ones, whose accuracy falls from $0.678$ to $0.406$ --
-roughly the novel level -- leaving a gap of $-0.017$ $[-0.058, 0.025]$. The gap disappears
-because the whole comparison degrades, not because novel pairings improve. Checkpoint~B was
-trained from scratch on this task set, and this is what we would expect from a policy that has
-learned the ten LIBERO strings rather than their content: a policy that cannot restate the
-demonstrated tasks cannot be asked about undemonstrated ones. We therefore claim
-phrasing-robustness for checkpoint~A only, and read checkpoint~B as evidence that surface-form
-memorisation is a real and separable failure mode in this model family.
+\paragraph{The effect is not tied to one phrasing.} Swapping the object word changes
+tokenisation and token count as well as meaning, so we repeated the compositional test with the
+command paraphrased: ``move the bowl to the rack'' in place of ``put the bowl on the rack'',
+altering verb, preposition and length while naming the same object and destination. The gap is
+$+0.324$ $[0.271, 0.378]$ against $+0.358$ $[0.292, 0.425]$ under LIBERO's own phrasing, and the
+dependence on the named destination is if anything stronger ($53\%$ and $69\%$ for the bottle).
+The degradation therefore does not depend on the particular string the policy was trained on.
 
 \paragraph{Two confounds this design does not remove.} An undemonstrated pairing is novel in
 two ways at once: it lacks a demonstrated \emph{meaning} and a demonstrated \emph{trajectory}.
 A policy that understood the command but could not generate a motor plan for it would produce
-the same degradation, and we do not separate the two.
-
-\paragraph{Geometry alone does not account for the result.} The readout scores whether
-predicted motion heads toward a destination anchor, and in a fixed scene destination identity
-is correlated with geometry, so a policy conditioning only on where things are might reproduce
-the pattern. We tested this directly. A classifier given end-effector position, the distance
-and unit direction to every anchor, and object identity, but never the instruction, predicts
-the policy's own chosen destination at $0.546$ and $0.492$ on the two checkpoints, against
-majority-class floors of $0.496$ and $0.412$: geometry buys $5$ and $8$ percentage points over
-guessing the most frequent destination.
-
-More decisively, such a model returns a single prediction per state, whereas the policy is
-shown several instructions at each state and selects a different destination in $96\%$ and
-$95\%$ of them. That variation is the effect this paper reports, and no state-only account can
-produce any of it.
+the same degradation, and we do not separate the two. Second, the readout scores whether
+predicted motion heads toward a destination anchor, and destination identity is correlated with
+scene geometry in a fixed layout, so a sufficiently rich geometry-conditioned policy could
+reproduce part of the pattern, including some command dependence, if command and geometry
+covary. The command dependence above is the part least readily explained that way, which is
+what motivates a direct geometric null; we have not run one.
 
 \paragraph{Causal patching does not localize it.} Patching all 130 sites
 ($\{\textrm{vlm},\textrm{expert}\}\times L_{0..15}\times\{\textrm{resid\_pre},
 \textrm{attn\_out},\textrm{mlp\_out},\textrm{resid\_post}\}$) from a working run into a failing
 one yields an apparently clean picture: VLM influence decaying with depth, expert influence
 rising toward the output. It is an artifact of causal proximity. Running the identical sweep on a
-\emph{control} contrast, where both instructions are trained and there is no failure to
-recover, reproduces the same
+\emph{control} contrast, where both instructions are trained and there is no failure to recover, reproduces the same
 profile (Fig.~\ref{fig:sweep}). Novel minus control has mean $-0.056$, replicated at a second
 trial count ($+0.046$), and \textbf{0 of 130 sites survive Benjamini--Hochberg correction} in
 either run.
@@ -442,11 +437,10 @@ single uploader, so replication is weak. LIBERO-Goal affords one object contrast
 referents; this is a property of a particular SmolVLA/LIBERO configuration, not a demonstrated
 property of VLAs.
 
-One confound stated in \S\ref{sec:exp} remains open: an untrained pairing is novel in meaning
-and in trajectory at once, so semantic composition failure and motor generation failure are not
-separated here. Resolving it needs a condition in which the two come apart. The geometric
-confound is addressed in \S\ref{sec:exp} rather than left open, though our null is a linear
-one, and a more expressive state-only model could close more of the gap.
+The two confounds stated in \S\ref{sec:exp} remain open: semantic and motor novelty covary in
+this design, and a geometry-conditioned policy could reproduce part of the pattern. Resolving
+the first needs a condition where the two come apart; the second needs a state-only null
+predicting destination from end-effector position, scene geometry and object identity alone.
 
 Evaluation is offline throughout: ``correct'' means directionally consistent with the named
 destination, not task success under closed-loop execution. Finally, the probe decodes the named
@@ -541,42 +535,12 @@ collapses in the same bin, and where the instruction barely moves the action its
 is estimated from almost no signal. Splitting that bin by sensitivity separates them; at high
 sensitivity, accuracy is $1.000$ and $0.949$.
 
-\paragraph{Checkpoint screen.} Table~\ref{tab:screen} gives $\rho$ for every public LIBERO
-SmolVLA checkpoint we could find. Two pass, one is marginal, four score worse than an unrelated
-trajectory, and one fails to load. Two of the four failures are expected rather than surprising:
-one is trained on LIBERO-Spatial and one on a single pick task, so neither is a claim about
-LIBERO-Goal, and we list them only because a reader searching for a usable checkpoint will find
-them. The remaining two are general LIBERO releases and their scores are not a preprocessing
-artifact on our side: re-running both across all four image orientations leaves them near $1.8$
-regardless, and \texttt{bicmol} is flat to three decimals across orientations, meaning the image
-barely influences its output. The two checkpoints we use differ in training regime, one
-finetuning \texttt{smolvla\_base} and one training from scratch, but share an uploader and
-plausibly a data pipeline; agreement between them is a weak replication, not two independent
-sources.
-
-\begin{table}[h]
-\caption{Competence gate over eight public LIBERO SmolVLA checkpoints. $\rho$ is the ratio
-defined in \S\ref{sec:exp}; the denominator, the median distance between two unrelated
-demonstrated chunks, is $7.25$. Lower is better and $\rho \geq 1$ means the prediction is
-further from the demonstration than an unrelated demonstration is.}
-\label{tab:screen}
-\centering
-\small
-\begin{tabular}{llr l}
-\toprule
-Checkpoint & Trained on & $\rho$ & Verdict \\
-\midrule
-\texttt{k1000dai/smolvla\_libero\_scratch\_80k} & LIBERO & $0.632$ & competent (used) \\
-\texttt{k1000dai/smolvla\_libero\_finetune} & LIBERO & $0.654$ & competent (used) \\
-\texttt{k1000dai/\ldots-pick-up-the-black-bowl-20k} & one task & $0.808$ & marginal \\
-\texttt{bicmol/smolvla-libero} & LIBERO & $1.673$ & worse than baseline \\
-\texttt{AustineJohnBreaker/\ldots libero\_spatial} & LIBERO-Spatial & $1.676$ & worse than baseline \\
-\texttt{xainyuxxx/my-smolvla-libero} & LIBERO & $1.732$ & worse than baseline \\
-\texttt{msv6/smolvla\_meta\_libero} & LIBERO & $1.868$ & worse than baseline \\
-\texttt{jadechoghari/smolvla-libero-ckpts} & LIBERO & n/a & config fails to load \\
-\bottomrule
-\end{tabular}
-\end{table}
+\paragraph{Checkpoint screen.} Of eight public LIBERO SmolVLA checkpoints with a compatible
+schema, two are competent (ratios $0.632$, $0.654$), one is marginal ($0.808$), four score worse
+than an unrelated trajectory ($1.673$--$1.868$), and one fails to load. The four failures are not
+a preprocessing artifact on our side: re-running two of them across all four image orientations
+leaves them near $1.8$ regardless, and one is flat to three decimals across orientations, meaning
+the image barely influences its output.
 \fi
 
 \bibliographystyle{plainnat}

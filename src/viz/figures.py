@@ -1,6 +1,13 @@
 """Publication figures, built only from committed runs in `results/`.
 
-Two figures, each carrying an argument the prose cannot make on its own:
+Three figures, each carrying an argument the prose cannot make on its own:
+
+**Fig 1 -- the design and what it returns.** Panel (a) is the experimental logic: one
+stimulus, two instructions a word apart, scored by which destination the motion heads
+toward, run in three settings. Panels (b) and (c) give the headline numbers for those
+settings. Built here rather than in TikZ so it regenerates from `results/` and can be
+rendered and inspected; a hand-drawn figure cannot be checked without compiling, which is
+how a retracted claim survived in an earlier version of Fig 3's title.
 
 **Fig 2 — the localization null.** The sweep's layer profile next to the *control*
 profile (both instructions trained, so there is no failure to recover). The control shows
@@ -203,12 +210,13 @@ def make_all(out_dir: Path | None = None) -> int:
 def fig_schematic(out_path: Path) -> bool:
     """Fig 1: the whole paper in one image.
 
-    Three panels, left to right: what a stimulus is, the account the data rules out, and
-    the finding. Panel 1 uses a real camera frame rather than a drawing -- the reader
-    should see the actual scene the policy sees, including that the two arms of a
-    contrastive pair are the *same* pixels.
+    Panel (a) is the design: the contrastive stimulus, the pipeline it runs through, and
+    the three settings the same contrast is run in. It uses a real camera frame rather than
+    a drawing -- the reader should see the actual scene the policy sees, including that the
+    two arms of a contrastive pair are the *same* pixels.
 
-    Panel 3 must show BOTH halves of the finding. Showing only the failure (bowl->rack at
+    Panels (b) and (c) are what that design returns. Panel (c) must show BOTH halves of the
+    finding. Showing only the failure (bowl->rack at
     1%) would argue for the blind-substitution reading this paper explicitly retracts; the
     command dependence (told "plate" -> plate 45%) is what distinguishes degraded
     composition from a lookup.
@@ -243,26 +251,80 @@ def fig_schematic(out_path: Path) -> bool:
     bowl_rack = [r for r in rows if r["novel"] and r["object"] == "bowl"]
     p_rack = sum(r["correct"] for r in bowl_rack) / len(bowl_rack)
 
-    fig, axes = plt.subplots(1, 3, figsize=(6.9, 2.5))
+    from matplotlib.patches import FancyBboxPatch
 
-    # ---- panel 1: the stimulus -------------------------------------------------
-    ax = axes[0]
-    ax.imshow(frame)
-    ax.set_xticks([])
-    ax.set_yticks([])
-    for s in ax.spines.values():
-        s.set_edgecolor("#c9c8c3")
+    fig = plt.figure(figsize=(6.9, 3.95))
+    gs = fig.add_gridspec(2, 2, height_ratios=[1.16, 1.0], hspace=0.36,
+                          wspace=0.22, left=0.045, right=0.985, top=0.955, bottom=0.155)
+
+    # ---- panel (a): the pipeline, then the three settings it is run in ---------
+    # One drawing axes in 0..1 coordinates. The camera frame goes in as a real image
+    # rather than a drawn box: the reader should see the actual scene the policy sees,
+    # and that both arms of a contrastive pair are the *same* pixels.
+    ax = fig.add_subplot(gs[0, :])
+    ax.set_xlim(0, 1)
+    ax.set_ylim(0, 1)
+    ax.axis("off")
     _panel_label(ax, "a")
-    # Quoted rather than capitalised: these are the literal strings handed to the policy,
-    # and SHOUTING one word misrepresents the input. Colour plus the quotation marks carry
-    # the contrast. (Mathtext bold is avoided here -- "$\bf{...}$" in a non-raw string
-    # makes Python read \b as a backspace, which matplotlib then fails to parse.)
-    ax.text(0.5, -0.09, "“put the bowl on the plate”", transform=ax.transAxes,
-            ha="center", va="top", fontsize=8, color=SERIES_A)
-    ax.text(0.5, -0.26, "“put the bowl on the stove”", transform=ax.transAxes,
-            ha="center", va="top", fontsize=8, color=SERIES_B)
 
-    # ---- panels 2 and 3 -------------------------------------------------------
+    def _box(x0, x1, y0, y1, text, fill="#f4f3ef", size=7.5, weight="normal"):
+        ax.add_patch(FancyBboxPatch(
+            (x0, y0), x1 - x0, y1 - y0, boxstyle="round,pad=0.004,rounding_size=0.012",
+            linewidth=0.7, edgecolor="#a9a8a3", facecolor=fill, zorder=2,
+            transform=ax.transData))
+        ax.text((x0 + x1) / 2, (y0 + y1) / 2, text, ha="center", va="center",
+                fontsize=size, color=INK, zorder=3, fontweight=weight,
+                linespacing=1.35)
+
+    def _arrow(x0, x1, y):
+        ax.annotate("", xy=(x1, y), xytext=(x0, y), zorder=4,
+                    arrowprops=dict(arrowstyle="-|>", color="#6d6c68", lw=0.8,
+                                    shrinkA=0, shrinkB=0))
+
+    # top row: input -> policy -> motion -> scored destination
+    ROW = 0.70
+    _box(0.004, 0.438, 0.470, 0.995, "", fill="#fbfbf9")
+    im = ax.inset_axes([0.020, 0.545, 0.125, 0.395])
+    im.imshow(frame)
+    im.set_xticks([])
+    im.set_yticks([])
+    for s in im.spines.values():
+        s.set_edgecolor("#a9a8a3")
+        s.set_linewidth(0.7)
+    # The two instructions are the literal strings handed to the policy, so they are
+    # quoted at their real casing. SHOUTING the differing word misrepresents the input;
+    # colour and the quotation marks carry the contrast instead.
+    ax.text(0.160, 0.885, "“put the bowl on the plate”", fontsize=7.5, color=SERIES_A,
+            va="center", ha="left")
+    ax.text(0.160, 0.720, "“put the bowl on the stove”", fontsize=7.5, color=SERIES_B,
+            va="center", ha="left")
+    ax.text(0.160, 0.552, "same pixels, one changed word",
+            fontsize=6.8, color=INK_SOFT, va="center", ha="left")
+
+    _arrow(0.441, 0.477, ROW)
+    _box(0.480, 0.610, ROW - 0.115, ROW + 0.115, "SmolVLA\npolicy")
+    _arrow(0.612, 0.653, ROW)
+    _box(0.655, 0.785, ROW - 0.115, ROW + 0.115, "predicted\nmotion")
+    _arrow(0.787, 0.828, ROW)
+    _box(0.830, 0.988, ROW - 0.115, ROW + 0.115, "scored\ndestination", fill="#eaf1fa")
+
+    # second row: the same contrast, run in three settings
+    ax.text(0.5, 0.395, "The same contrast is run in three settings",
+            fontsize=7.2, color=INK_SOFT, ha="center", va="center")
+    setting = [
+        ("Neutral", "Before the grasp, does the\ninstruction steer the arm?", "#f4f3ef"),
+        ("Conflict", "The arm is already heading\nto a different goal.", "#fdf0e8"),
+        ("Composition", "Familiar object, familiar place,\npairing never demonstrated.", "#eaf1fa"),
+    ]
+    for i, (name, body, fill) in enumerate(setting):
+        x0 = 0.012 + i * 0.331
+        _box(x0, x0 + 0.311, 0.020, 0.315, "", fill=fill)
+        ax.text(x0 + 0.016, 0.245, name, fontsize=7.5, color=INK,
+                fontweight="bold", ha="left", va="center")
+        ax.text(x0 + 0.016, 0.115, body, fontsize=6.8, color=INK_SOFT,
+                ha="left", va="center", linespacing=1.4)
+
+    # ---- panels (b) and (c): what the contrast returns -------------------------
     # Labels sit INSIDE each panel above their bar rather than on the y-axis. Long
     # y-tick labels overflow leftwards into the neighbouring panel and collide with its
     # bars, which is invisible in code and obvious the moment you render it.
@@ -282,32 +344,29 @@ def fig_schematic(out_path: Path) -> bool:
         ax.spines["left"].set_visible(False)
         del title
 
-    _bars(axes[1],
-          [("Arm already heading elsewhere", 94.6, 1.0), ("Neutral state", 74.5, 0.45)],
+    ax_b = fig.add_subplot(gs[1, 0])
+    _bars(ax_b,
+          [("Conflict: arm already heading elsewhere", 94.6, 1.0),
+           ("Neutral state", 74.5, 0.45)],
           SERIES_A, "Follows the command (%)", None)
-    _panel_label(axes[1], "b")
+    _panel_label(ax_b, "b")
 
-    _bars(axes[2],
-          [("Bottle to the plate (untrained)", p_plate * 100, 1.0),
-           ("Bowl to the rack (untrained)", p_rack * 100, 1.0)],
+    ax_c = fig.add_subplot(gs[1, 1])
+    _bars(ax_c,
+          [("Composition: bottle to the plate", p_plate * 100, 1.0),
+           ("Composition: bowl to the rack", p_rack * 100, 1.0)],
           SERIES_B, "Heads to the named place (%)", None)
-    _panel_label(axes[2], "c")
-    fig.subplots_adjust(bottom=0.30, wspace=0.30, top=0.84)
+    _panel_label(ax_c, "c")
 
-    # One caption per panel, all on a single figure-coordinate baseline. Putting them in
-    # axes coordinates does not align them: panel (a) holds a square image, so its axes
-    # box is shrunk vertically by the aspect ratio and the same transAxes offset lands at
-    # a different height than it does in (b) and (c).
-    captions = ("Identical pixels, one word apart",
-                "Vision does not override the command",
-                "Some pairings survive, others do not")
+    # One caption per data panel, both on a single figure-coordinate baseline.
     fig.canvas.draw()
-    for ax, cap in zip(axes, captions, strict=True):
-        box = ax.get_position()
-        t = fig.text(box.x0 + box.width / 2, 0.015, cap,
+    captions = ("Vision does not override the command",
+                "Some pairings survive, others do not")
+    for a, cap in zip((ax_b, ax_c), captions, strict=True):
+        box = a.get_position()
+        t = fig.text(box.x0 + box.width / 2, 0.022, cap,
                      fontsize=7, color=INK_SOFT, ha="center", va="bottom")
-        # The outer captions are wider than their panels, so centring them on the panel
-        # can push text off the canvas. Measure and pull it back inside.
+        # A caption wider than its panel can run off the canvas. Measure and pull it back.
         w = t.get_window_extent(fig.canvas.get_renderer())
         w = w.transformed(fig.transFigure.inverted())
         shift = max(0.005 - w.x0, 0.0) + min(0.995 - w.x1, 0.0)
