@@ -1,34 +1,44 @@
 % Citation keys used in main.tex.
 %
-% arXiv IDs come from CLAUDE.md §14. Author lists and exact titles are NOT verified --
-% each entry below is marked TODO where a field was not confirmed against the actual
-% paper. Verify every one before submission; a wrong citation is worse than a missing one.
+% Every entry below was checked against its arXiv abstract page on 2026-08-24; titles and
+% author lists are as printed there. If you add an entry, verify it the same way -- a wrong
+% citation is worse than a missing one.
 
 @article{better,
-  title  = {{TODO: verify title}},
-  author = {{TODO: verify authors}},
+  title  = {Unmasking the Illusion of Embodied Reasoning in Vision-Language-Action Models},
+  author = {Xu, Haiweng and Zheng, Sipeng and Luo, Hao and Zhang, Wanpeng and Xi, Ziheng and
+            Lu, Zongqing},
   journal = {arXiv preprint arXiv:2604.18000},
   year   = {2026},
-  note   = {Behavioural target: instruction-following failure in VLAs}
+  note   = {Behavioural target: instruction-following failure in VLAs (BeTTER)}
 }
 
 @article{icbench,
-  title  = {{TODO: verify title -- ICBench / linguistic blindness}},
-  author = {{TODO: verify authors}},
+  title  = {Restoring Linguistic Grounding in {VLA} Models via Train-Free Attention
+            Recalibration},
+  author = {Zhang, Ninghao and Zhu, Bin and Zhou, Shijie and Chen, Jingjing},
   journal = {arXiv preprint arXiv:2603.06001},
-  year   = {2026}
+  year   = {2026},
+  note   = {Introduces ICBench and the ``linguistic blindness'' diagnosis, plus IGAR as a
+            train-free mitigation.}
 }
 
 @article{liberocf,
-  title  = {{TODO: verify title -- LIBERO-CF / CAG}},
-  author = {{TODO: verify authors}},
+  title  = {When Vision Overrides Language: Evaluating and Mitigating Counterfactual
+            Failures in {VLAs}},
+  author = {Fang, Yu and Feng, Yuchun and Jing, Dong and Liu, Jiaqi and Yang, Yue and
+            Wei, Zhenyu and Szafir, Daniel and Ding, Mingyu},
   journal = {arXiv preprint arXiv:2602.17659},
-  year   = {2026}
+  year   = {2026},
+  note   = {LIBERO-CF and CAG.}
 }
 
 @article{robosem,
-  title  = {{TODO: verify title -- RoboSemanticBench}},
-  author = {{TODO: verify authors}},
+  title  = {{RoboSemanticBench}: Diagnosing Semantic Grounding in Action Prediction for
+            {VLA} Models},
+  author = {Yu, Bin and Zhang, Yao and Liu, Haishan and Lian, Shijie and Wei, Yuliang and
+            Lin, Xiaopeng and Shen, Zhaolong and Wu, Changti and Hu, Ruina and
+            Wang, Bailing and Huang, Cong and Chen, Kai},
   journal = {arXiv preprint arXiv:2606.02277},
   year   = {2026}
 }
@@ -41,22 +51,27 @@
 }
 
 @article{vlmbinding,
-  title  = {{TODO: verify title -- binding in VLMs}},
-  author = {{TODO: verify authors}},
+  title  = {Investigating Mechanisms for In-Context Vision Language Binding},
+  author = {Saravanan, Darshana and Tapaswi, Makarand and Gandhi, Vineet},
   journal = {arXiv preprint arXiv:2505.22200},
   year   = {2025}
 }
 
 @article{notallfeatures,
-  title  = {{TODO: verify title -- "Not All Features"}},
-  author = {{TODO: verify authors}},
+  title  = {Not All Features Are Created Equal: A Mechanistic Study of
+            Vision-Language-Action Models},
+  author = {Grant, Bryce and Zhao, Xijia and Wang, Peng},
   journal = {arXiv preprint arXiv:2603.19233},
-  year   = {2026}
+  year   = {2026},
+  note   = {Multimodal Intelligence Workshop, ICLR 2026.}
 }
 
 @article{vlatrace,
-  title  = {{TODO: verify title -- VLA-Trace}},
-  author = {{TODO: verify authors}},
+  title  = {{VLA-Trace}: Diagnosing Vision-Language-Action Models through Representation
+            and Behavior Tracing},
+  author = {Shi, Haoyuan and Ren, Xiancong and Zhang, Yingji and Zhang, Qinfan and Hu, Jiayu
+            and Shan, Haozhe and Dong, Han and Lu, Jinpeng and Chen, Yinda and Zhang, Yi and
+            Dai, Yong and Ju, Xiaozhu},
   journal = {arXiv preprint arXiv:2605.30117},
   year   = {2026}
 }
@@ -79,7 +94,8 @@
 
 @article{smolvla,
   title  = {{SmolVLA}: A Vision-Language-Action Model for Affordable and Efficient Robotics},
-  author = {{Hugging Face}},
+  author = {Shukor, Mustafa and Aubakirova, Dana and Capuano, Francesco and
+            Kooijmans, Pepijn and others},
   journal = {arXiv preprint arXiv:2506.01844},
   year   = {2025}
 }
@@ -99,13 +115,13 @@
   year   = {2024}
 }
 
-% ---- Concurrent work, found in the 2026-08-14 scan. VERIFIED as characterised in
-% ---- paper/related_work_scan_2026-08-14.md (which includes a second-pass correction
-% ---- of two earlier mischaracterisations). Titles/venues below still need checking
-% ---- against the papers themselves before submission.
+% ---- Concurrent work, found in the 2026-08-14 scan. Characterisation VERIFIED in
+% ---- paper/related_work_scan_2026-08-14.md (which includes a second-pass correction of
+% ---- two earlier mischaracterisations); titles and authors verified 2026-08-24.
 @article{brittle,
-  title  = {Robust Skills, Brittle Grounding},
-  author = {{TODO: verify authors}},
+  title  = {Robust Skills, Brittle Grounding: Diagnosing Restricted Generalization in
+            Vision-Language Action Policies via Multi-Object Picking},
+  author = {Emukpere, David and Deffayet, Romain and Renders, Jean-Michel},
   journal = {arXiv preprint arXiv:2602.24143},
   year   = {2026},
   note   = {Held-out object-location pairings on SmolVLA and pi-0.5; purely behavioural.
@@ -114,8 +130,10 @@
 }
 
 @article{scaleup,
-  title  = {Scale Up Strategically},
-  author = {{TODO: verify authors}},
+  title  = {Scale Up Strategically: Learning Compositional Generalization via Bias-Aware
+            Evaluation and Data Collection for Robotic Manipulation},
+  author = {Qi, Yu and Ye, Zhang and Xu, Xinyi and Lu, Yuxuan and Sandhu, Amitoj and
+            Hu, Boce and Huang, Haojie and Tremblay, Jonathan and Wong, Lawson L. S.},
   journal = {arXiv preprint arXiv:2607.21582},
   year   = {2026},
   note   = {Re-pairs instruction factors across six models; memorised factor associations.}

@@ -174,10 +174,12 @@ analyses (\S\ref{sec:exp}) do not achieve.
 \paragraph{Compositional failure in VLAs.} \citet{brittle} report that held-out
 object--location pairings fail on SmolVLA and $\pi_{0.5}$, and \citet{scaleup} find memorised
 factor associations across six models; \citet{better,icbench,liberocf,robosem} document
-instruction under-use more broadly. \emph{What is missing:} these studies characterise the
-failure as an aggregate rate, which cannot distinguish among the accounts that predict it. We
-contribute the controlled contrasts that separate them, and we test two candidate mechanistic
-analyses.
+instruction under-use more broadly; two of them go on to propose mitigations, attention
+recalibration~\citep{icbench} and counterfactual-aware guidance~\citep{liberocf}.
+\emph{What is missing:} the failure is characterised as an aggregate rate, which cannot
+distinguish among the accounts that predict it, and the mitigations are proposed without one.
+We contribute the controlled contrasts that separate those accounts, and we test two candidate
+mechanistic analyses.
 
 \paragraph{Interpretability of VLA grounding.} \citet{notallfeatures} run activation injection
 on six models including SmolVLA and report that language sensitivity depends on task structure,
