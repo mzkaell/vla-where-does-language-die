@@ -98,3 +98,7 @@ paper/*.out
 paper/*.bbl
 paper/*.blg
 paper/*.pdf
+
+# Overleaf snapshots, dropped here for merging. Never the source of truth --
+# two main.tex files in one repo is the drift problem we keep hitting.
+paper/overleaf/
