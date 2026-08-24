@@ -37,3 +37,23 @@ print("has \\workshoptitle    :", "workshoptitle" in src)
 print("has \\title            :", bool(re.search(r"\\title\{", src)))
 bad = sorted({c for c in t if ord(c) > 127})
 print("non-ascii (needs utf8):", "".join(bad) or "none")
+
+# Macros that lost their leading backslash. This happens when text passes through a shell
+# heredoc or a naive string replace: "\begin" becomes "egin", "\textbf" becomes "extbf",
+# "\ref" becomes a carriage return followed by "ef". LaTeX then renders the fragment as
+# literal prose, or fails somewhere unrelated, and the brace/environment counters above
+# stay happy because the braces are still balanced. It has bitten this file four times.
+STEMS = ["egin", "nd", "extbf", "extit", "mph", "ef", "ection", "aragraph", "abel",
+         "itepressure", "itep", "itet", "ubsection", "aption", "includegraphics"]
+mangled = []
+for lineno, line in enumerate(t.splitlines(), 1):
+    for stem in STEMS:
+        for m in re.finditer(r"(?<![A-Za-z\\])" + stem + r"\{", line):
+            mangled.append((lineno, stem, line.strip()[:72]))
+print("mangled macros        :", len(mangled) or "none")
+for lineno, stem, text in mangled[:8]:
+    print(f"   line {lineno}: '{stem}{{' -- {text}")
+
+# A lone carriage return mid-line is the same failure caught a different way.
+stray_cr = [i for i, line in enumerate(t.split("\n"), 1) if "\r" in line.rstrip("\r")]
+print("stray CR mid-line     :", stray_cr or "none")

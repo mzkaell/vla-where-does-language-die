@@ -9,28 +9,30 @@
 % RoboPAD, VLM4RWD and Interpretability-for-Discovery all use. Switch to
 % [dblblindworkshop, final] only after acceptance.
 % ---------------------------------------------------------------------------
-% ONE SOURCE, TWO PAPERS.
+% TWO SWITCHES: content length, and venue.
 %
-% RoboPAD wants 4 pages, VLM4RWD wants 8. Maintaining two .tex files guarantees
-% they drift -- a number fixed in one and missed in the other is exactly the
-% failure this project has spent a fortnight learning to avoid. So the long-only
-% material lives inside \iflong ... \fi and both versions build from this file.
-%
-%   4-page  (RoboPAD):  \longfalse   <- default below
-%   8-page  (VLM4RWD):  \longtrue
+% Both target venues take the full version, so \longtrue is the default:
+%   RoboPAD   9 pages of main content, references and appendix unlimited
+%   VLM4RWD   8 pages excluding references and appendices
+% Set \longfalse only if a venue turns out to want the compressed version; it
+% drops the measurement-artifacts and extended-results sections.
 % ---------------------------------------------------------------------------
 \newif\iflong
-\longfalse          % <-- flip to \longtrue for the 8-page VLM4RWD version
+\longtrue           % full version -- fits both venues
+
+% Venue only affects the footnote title. Pick one.
+\newif\ifrobopad
+\robopadtrue        % \robopadtrue for RoboPAD, \robopadfalse for VLM4RWD
 
 \documentclass{article}
 \usepackage[dblblindworkshop]{neurips_2026}
 
 % The workshop template requires BOTH \title and \workshoptitle. The venue differs
 % between the two builds, so it follows the same switch.
-\iflong
-  \workshoptitle{Vision-Language Models for Real-World Deployment (VLM4RWD)}
-\else
+\ifrobopad
   \workshoptitle{Robot Foundation Models: Post-Pretraining Adaptation, Reasoning and Evaluation (RoboPAD)}
+\else
+  \workshoptitle{Vision-Language Models for Real-World Deployment (VLM4RWD)}
 \fi
 
 \usepackage[utf8]{inputenc}
@@ -90,6 +92,20 @@ competence gate that finds only $2$ of $8$ public checkpoints usable, and six me
 artifacts that produced convincing but incorrect results in our own pipeline.
 \end{abstract}
 
+\begin{figure}[t]
+\centering
+\includegraphics[width=\linewidth]{figures/fig1_schematic.pdf}
+\caption{\textbf{The paper in one figure.} \emph{Left:} a stimulus is one camera frame and two
+instructions differing in a single word, so any difference in the predicted action is
+attributable to that word. \emph{Centre:} when the arm is already moving toward one goal and
+the command names another, the policy follows the command, which a vision-dominance account
+does not predict. \emph{Right:} on an object--place pairing never demonstrated in training the
+policy degrades sharply, and for one pairing almost completely; but the place it heads toward
+still depends on the place the command names, so the behaviour is not a fixed
+object-conditioned lookup. All values from checkpoint~A.}
+\label{fig:schematic}
+\end{figure}
+
 \section{Introduction}
 \label{sec:intro}
 
@@ -111,7 +127,8 @@ The second question is not incidental. Every intuitive measurement we constructe
 apparently clean and statistically significant number that later proved to be an artifact, and
 in each case the error surfaced only through a check capable of contradicting it.
 
-Our stimuli are minimal contrastive pairs: identical observations with instructions differing
+Our stimuli are minimal contrastive pairs (Fig.~\ref{fig:schematic}): identical observations
+with instructions differing
 in exactly one referent, so any change in the predicted action is attributable to the swapped
 word. We test the competing accounts with matched behavioural contrasts. A
 \emph{vision-dominance} account predicts failure when the visual context opposes the
@@ -390,8 +407,7 @@ single uploader, so replication is weak. LIBERO-Goal affords one object contrast
 referents; this is a property of a particular SmolVLA/LIBERO configuration, not a demonstrated
 property of VLAs.
 
-The two confounds stated in \S
-ef{sec:exp} remain open: semantic and motor novelty covary in
+The two confounds stated in \S\ref{sec:exp} remain open: semantic and motor novelty covary in
 this design, and a geometry-conditioned policy could reproduce part of the pattern. Resolving
 the first needs a condition where the two come apart; the second needs a state-only null
 predicting destination from end-effector position, scene geometry and object identity alone.

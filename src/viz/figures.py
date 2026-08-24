@@ -130,7 +130,7 @@ def fig_sweep(out_path: Path) -> bool:
 
 
 def fig_probe(out_path: Path) -> bool:
-    """Fig 3: the destination is decodable inside the expert, and unused."""
+    """Fig 3: destination decodability through the expert, against a shuffled control."""
     import matplotlib.pyplot as plt
 
     d = _load("probe_big_grouped")
@@ -171,6 +171,108 @@ def make_all(out_dir: Path | None = None) -> int:
     _style()
     out = out_dir or (REPO_ROOT / "figures")
     out.mkdir(parents=True, exist_ok=True)
-    ok = fig_sweep(out / "fig2_sweep.pdf")
+    ok = fig_schematic(out / "fig1_schematic.pdf")
+    ok = fig_sweep(out / "fig2_sweep.pdf") and ok
     ok = fig_probe(out / "fig3_probe.pdf") and ok
     return 0 if ok else 1
+
+
+def fig_schematic(out_path: Path) -> bool:
+    """Fig 1: the whole paper in one image.
+
+    Three panels, left to right: what a stimulus is, the account the data rules out, and
+    the finding. Panel 1 uses a real camera frame rather than a drawing -- the reader
+    should see the actual scene the policy sees, including that the two arms of a
+    contrastive pair are the *same* pixels.
+
+    Panel 3 must show BOTH halves of the finding. Showing only the failure (bowl->rack at
+    1%) would argue for the blind-substitution reading this paper explicitly retracts; the
+    command dependence (told "plate" -> plate 45%) is what distinguishes degraded
+    composition from a lookup.
+    """
+    import json
+
+    import h5py
+    import matplotlib.pyplot as plt
+    import numpy as np
+
+    demo = REPO_ROOT / "data" / "libero" / "libero_goal" / "put_the_bowl_on_the_plate_demo.hdf5"
+    if not demo.exists():
+        print("fig1: LIBERO demo file missing")
+        return False
+    with h5py.File(demo, "r") as h:
+        # rot180: LIBERO stores frames bottom-up (MuJoCo/OpenGL convention). Feeding them
+        # unrotated made the policy score worse than a random trajectory -- artifact #2.
+        frame = np.ascontiguousarray(h["data"]["demo_18"]["obs"]["agentview_rgb"][40][::-1, ::-1])
+
+    fs = _load("fs_finetune")
+    if not fs:
+        print("fig1: missing fs_finetune")
+        return False
+    rows = [
+        json.loads(line)
+        for line in (REPO_ROOT / "results" / "fs_finetune" / "per_trial.jsonl")
+        .read_text().splitlines() if line.strip()
+    ]
+    novel = [r for r in rows if r["novel"] and r["object"] == "wine bottle"]
+    told_plate = [r for r in novel if r["named_destination"] == "the plate"]
+    p_plate = sum(r["chosen_destination"] == "the plate" for r in told_plate) / len(told_plate)
+    bowl_rack = [r for r in rows if r["novel"] and r["object"] == "bowl"]
+    p_rack = sum(r["correct"] for r in bowl_rack) / len(bowl_rack)
+
+    fig, axes = plt.subplots(1, 3, figsize=(6.9, 2.35))
+
+    # ---- panel 1: the stimulus -------------------------------------------------
+    ax = axes[0]
+    ax.imshow(frame)
+    ax.set_xticks([]); ax.set_yticks([])
+    for s in ax.spines.values():
+        s.set_edgecolor("#c9c8c3")
+    ax.set_title("1.  One scene, one word apart", loc="left", fontsize=8, pad=6)
+    # Plain text with the differing word capitalised, not mathtext bold: "$\bf{...}$" in a
+    # non-raw string makes Python read \b as a backspace, which matplotlib then fails to
+    # parse. Capitals carry the contrast just as well and cannot break in transit.
+    ax.text(0.5, -0.10, "put the bowl on the PLATE", transform=ax.transAxes,
+            ha="center", va="top", fontsize=7.5, color=SERIES_A)
+    ax.text(0.5, -0.25, "put the bowl on the STOVE", transform=ax.transAxes,
+            ha="center", va="top", fontsize=7.5, color=SERIES_B)
+    ax.text(0.5, -0.42, "identical pixels; the action difference\nis attributable to that word",
+            transform=ax.transAxes, ha="center", va="top", fontsize=6.5, color=INK_SOFT)
+
+    # ---- panels 2 and 3 -------------------------------------------------------
+    # Labels sit INSIDE each panel above their bar rather than on the y-axis. Long
+    # y-tick labels overflow leftwards into the neighbouring panel and collide with its
+    # bars, which is invisible in code and obvious the moment you render it.
+    def _bars(ax, rows, colour, xlabel, title):
+        ys = [1.0, 0.0]
+        for y, (label, value, alpha) in zip(ys, rows, strict=False):
+            ax.barh([y], [value], color=colour, alpha=alpha, height=0.30, zorder=3)
+            ax.text(0, y + 0.26, label, fontsize=6.8, color=INK_SOFT, va="bottom", ha="left")
+            ax.text(value + 2.5, y, f"{value:.1f}".rstrip("0").rstrip("."),
+                    va="center", fontsize=8, color=INK, fontweight="bold")
+        ax.set_yticks([])
+        ax.set_ylim(-0.55, 1.75)
+        ax.set_xlim(0, 118)
+        ax.set_xticks([0, 50, 100])
+        ax.set_xlabel(xlabel, fontsize=7.5)
+        ax.grid(axis="x", zorder=0)
+        ax.spines["left"].set_visible(False)
+        ax.set_title(title, loc="left", fontsize=8, pad=6)
+
+    _bars(axes[1],
+          [("arm already heading elsewhere", 94.6, 1.0), ("neutral state", 74.5, 0.45)],
+          SERIES_A, "follows the command (%)", "2.  Vision does not override")
+
+    _bars(axes[2],
+          [('"bottle on the plate", told plate', p_plate * 100, 1.0),
+           ('"bowl on the rack", never trained', p_rack * 100, 1.0)],
+          SERIES_B, "heads to the named place (%)", "3.  Untrained pairings degrade")
+    # Figure-level so it clears panel 3's x-axis label instead of landing on top of it.
+    fig.text(0.685, 0.015, "still tracks the command, so not a fixed lookup",
+             fontsize=6.5, color=INK_SOFT, ha="left")
+
+    fig.subplots_adjust(bottom=0.30, wspace=0.30, top=0.86)
+    fig.savefig(out_path)
+    plt.close(fig)
+    print(f"wrote {out_path}")
+    return True
