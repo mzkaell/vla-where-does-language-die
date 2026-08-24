@@ -41,6 +41,9 @@
 \usepackage{url}
 \usepackage{booktabs}
 \usepackage{amsfonts}
+% amsmath, not just amsfonts: \operatorname and \lVert in the competence-gate display
+% are amsmath macros and amsfonts does not provide them.
+\usepackage{amsmath}
 \usepackage{nicefrac}
 \usepackage{microtype}
 \usepackage{xcolor}
@@ -234,10 +237,27 @@ because its small size makes exhaustive patching tractable on a single consumer 
 discrete action vocabulary of larger autoregressive VLAs such as
 OpenVLA~\citep{openvla} would permit a direct action lens, which we discuss as future work.
 
-\paragraph{Competence gate.} Only 2 of 8 public LIBERO SmolVLA checkpoints track the
-demonstrations better than an unrelated trajectory does; four score \emph{worse} than that
-baseline at every image orientation. All results below use the two that pass. We report this as
-a result rather than housekeeping: it bears directly on the reproducibility of this literature.
+\paragraph{Competence gate.} A chance-level instruction-following rate is equally consistent
+with a policy that ignores language and one whose predictions are noise, so before any grounding
+claim we check that the policy tracks these states at all. The check needs no extra forward
+passes. Writing $\hat{a}$ for the predicted 50-step chunk and $a$ for the demonstrated one at the
+same state,
+\[
+\rho \;=\;
+\frac{\operatorname{median}\lVert \hat{a}-a\rVert}{\operatorname{median}\lVert a'-a\rVert},
+\]
+where $a'$ is a chunk drawn from an \emph{unrelated} demonstration at the same stimulus states.
+The denominator is therefore what ``a plausible trajectory for this scene, but not this one''
+scores ($7.25$ over $n=50$ pairs here), which makes $\rho$ readable without a reference model:
+$\rho \ll 1$ tracks the specific demonstration, $\rho \approx 1$ is no better than an unrelated
+trajectory, and $\rho \geq 1$ is worse than one. We require $\rho < 0.70$ to run a checkpoint and
+treat $\rho \geq 1.05$ as broken or misaligned. Only 2 of 8 public LIBERO SmolVLA checkpoints
+pass, and all results below use those two\iflong~(Table~\ref{tab:screen})\fi. We report this as a result
+rather than housekeeping: it bears directly on the reproducibility of this literature.
+
+The gate was not tuned to the result it guards. It was added to diagnose the neutral and
+conflict nulls, and the released commit history records the screen and the selection of the two
+checkpoints 3 hours and 45 minutes before the compositional experiment was first written.
 
 \begin{table}[t]
 \caption{Grounding holds under neutral and conflicting conditions and breaks under composition.
@@ -515,12 +535,42 @@ collapses in the same bin, and where the instruction barely moves the action its
 is estimated from almost no signal. Splitting that bin by sensitivity separates them---at high
 sensitivity, accuracy is $1.000$ and $0.949$.
 
-\paragraph{Checkpoint screen.} Of eight public LIBERO SmolVLA checkpoints with a compatible
-schema, two are competent (ratios $0.632$, $0.654$), one is marginal ($0.808$), four score worse
-than an unrelated trajectory ($1.673$--$1.868$), and one fails to load. The four failures are not
-a preprocessing artifact on our side: re-running two of them across all four image orientations
-leaves them near $1.8$ regardless, and one is flat to three decimals across orientations, meaning
-the image barely influences its output.
+\paragraph{Checkpoint screen.} Table~\ref{tab:screen} gives $\rho$ for every public LIBERO
+SmolVLA checkpoint we could find. Two pass, one is marginal, four score worse than an unrelated
+trajectory, and one fails to load. Two of the four failures are expected rather than surprising:
+one is trained on LIBERO-Spatial and one on a single pick task, so neither is a claim about
+LIBERO-Goal, and we list them only because a reader searching for a usable checkpoint will find
+them. The remaining two are general LIBERO releases and their scores are not a preprocessing
+artifact on our side---re-running both across all four image orientations leaves them near $1.8$
+regardless, and \texttt{bicmol} is flat to three decimals across orientations, meaning the image
+barely influences its output. The two checkpoints we use differ in training regime, one
+finetuning \texttt{smolvla\_base} and one training from scratch, but share an uploader and
+plausibly a data pipeline; agreement between them is a weak replication, not two independent
+sources.
+
+\begin{table}[h]
+\caption{Competence gate over eight public LIBERO SmolVLA checkpoints. $\rho$ is the ratio
+defined in \S\ref{sec:exp}; the denominator, the median distance between two unrelated
+demonstrated chunks, is $7.25$. Lower is better and $\rho \geq 1$ means the prediction is
+further from the demonstration than an unrelated demonstration is.}
+\label{tab:screen}
+\centering
+\small
+\begin{tabular}{llr l}
+\toprule
+Checkpoint & Trained on & $\rho$ & Verdict \\
+\midrule
+\texttt{k1000dai/smolvla\_libero\_scratch\_80k} & LIBERO & $0.632$ & competent (used) \\
+\texttt{k1000dai/smolvla\_libero\_finetune} & LIBERO & $0.654$ & competent (used) \\
+\texttt{k1000dai/\ldots-pick-up-the-black-bowl-20k} & one task & $0.808$ & marginal \\
+\texttt{bicmol/smolvla-libero} & LIBERO & $1.673$ & worse than baseline \\
+\texttt{AustineJohnBreaker/\ldots libero\_spatial} & LIBERO-Spatial & $1.676$ & worse than baseline \\
+\texttt{xainyuxxx/my-smolvla-libero} & LIBERO & $1.732$ & worse than baseline \\
+\texttt{msv6/smolvla\_meta\_libero} & LIBERO & $1.868$ & worse than baseline \\
+\texttt{jadechoghari/smolvla-libero-ckpts} & LIBERO & --- & config fails to load \\
+\bottomrule
+\end{tabular}
+\end{table}
 \fi
 
 \bibliographystyle{plainnat}

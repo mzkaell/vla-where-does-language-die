@@ -160,7 +160,8 @@ over the destination anchors. Carries the method visually. `[TODO: make]`
 checkpoints. Paired bootstrap, 10k resamples.
 
 **Table 1 — checkpoint screen.** 2 of 8 competent; four score *worse than predicting an
-unrelated trajectory*, at every image orientation. A result, not housekeeping.
+unrelated trajectory*. Two of those four were re-run at every image orientation and stay
+near 1.8, so their scores are not our preprocessing. A result, not housekeeping.
 
 **Table 2 — three regimes.**
 

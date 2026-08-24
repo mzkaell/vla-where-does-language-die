@@ -75,8 +75,9 @@ object↔destination *binding* failure, not a failure to attend to language.
 ### A methodological result: only 2 of 8 public checkpoints work at all
 
 We built a competence gate before measuring anything. Four public LIBERO SmolVLA checkpoints
-score *worse than predicting an unrelated trajectory* — at every image orientation. One won't
-load. That bears on how reproducible this literature is.
+score *worse than predicting an unrelated trajectory*; the two we re-ran at every image
+orientation stay just as bad, so it is not our preprocessing. One won't load. That bears on
+how reproducible this literature is.
 
 ---
 
