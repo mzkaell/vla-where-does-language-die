@@ -35,7 +35,13 @@ from src.eval.composition import (  # noqa: E402
     TRAINED,
     instruction_for,
 )
-from src.interp.probe import ProbeResult, fit_probe, pool_activation, verdict  # noqa: E402
+from src.interp.probe import (  # noqa: E402
+    ProbeResult,
+    fit_probe,
+    fit_probe_nonlinear,
+    pool_activation,
+    verdict,
+)
 
 
 def main() -> int:
@@ -48,6 +54,20 @@ def main() -> int:
     ap.add_argument("--seed", type=int, default=0)
     ap.add_argument("--sites-limit", type=int, default=None)
     ap.add_argument("--run-id", default=None)
+    ap.add_argument(
+        "--nonlinear",
+        action="store_true",
+        help=(
+            "also fit a gradient-boosted-tree probe at every site, on the same split. "
+            "Distinguishes 'the destination is not encoded here' from 'it is encoded but "
+            "not linearly readable' -- the two readings the linear null cannot separate."
+        ),
+    )
+    ap.add_argument(
+        "--cache-activations",
+        action="store_true",
+        help="write pooled activations to activations.npz so later probes need no forward passes",
+    )
     args = ap.parse_args()
 
     suite_dir = args.data_root / args.suite
@@ -154,7 +174,18 @@ def main() -> int:
         print("  note: too few novel examples in held-out states; using all novel examples")
     print(f"  split by state: {len(train_states)} train / {len(test_states)} test states")
 
-    results = []
+    # Activations are the expensive part and are identical for every probe family, so
+    # cache them once. A later probe variant then costs seconds instead of a full sweep of
+    # forward passes -- which is what made the non-linear probe below cheap to add.
+    if args.cache_activations:
+        np.savez_compressed(
+            out_dir / "activations.npz",
+            y=y, groups=np.asarray(groups), novel_mask=novel_mask,
+            **{s.name: np.stack(acts[s.name]) for s in sites},
+        )
+        print(f"  cached activations -> {out_dir / 'activations.npz'}")
+
+    results, nonlinear = [], {}
     for s in sites:
         X = np.stack(acts[s.name])
         acc_tr = fit_probe(X[tr], y[tr], X[te], y[te], seed=args.seed)
@@ -169,12 +200,24 @@ def main() -> int:
                 acc_trained=acc_tr, acc_novel=acc_nv, acc_shuffled=acc_sh, chance=chance,
             )
         )
+        if args.nonlinear:
+            # Same split, same standardisation, same readout -- only the hypothesis class
+            # differs, so any gap over the linear probe is attributable to linearity. The
+            # shuffled control is refit under the booster too: a model this flexible can
+            # manufacture accuracy on a small training set, and only its own null shows it.
+            nonlinear[s.name] = {
+                "acc_trained": fit_probe_nonlinear(X[tr], y[tr], X[te], y[te], seed=args.seed),
+                "acc_novel": fit_probe_nonlinear(X[tr], y[tr], X[nv], y[nv], seed=args.seed),
+                "acc_shuffled": fit_probe_nonlinear(X[tr], y_shuf, X[te], y[te], seed=args.seed),
+            }
+            if len(nonlinear) % 10 == 0:
+                print(f"    non-linear probe: {len(nonlinear)}/{len(sites)} sites", flush=True)
 
     v = verdict(results)
-    (out_dir / "metrics.json").write_text(
-        json.dumps({"verdict": v, "sites": [r.as_dict() for r in results]}, indent=2),
-        encoding="utf-8",
-    )
+    payload: dict = {"verdict": v, "sites": [r.as_dict() for r in results]}
+    if nonlinear:
+        payload["nonlinear"] = nonlinear
+    (out_dir / "metrics.json").write_text(json.dumps(payload, indent=2), encoding="utf-8")
 
     print("\n" + "=" * 74)
     print(f"DESTINATION PROBE  ->  {v['verdict']}")
@@ -184,6 +227,28 @@ def main() -> int:
     for r in sorted(results, key=lambda x: -x.acc_novel)[:15]:
         print(f"{r.site:<26}{r.acc_trained:>9.3f}{r.acc_novel:>9.3f}{r.acc_shuffled:>10.3f}")
     print(f"\n{v['reason']}")
+
+    if nonlinear:
+        # The comparison that matters is linear vs boosted at the SAME site on the SAME
+        # split. A boosted probe that gains only where its own shuffled control also rises
+        # is fitting noise rather than finding structure, so all three are printed.
+        print("\n" + "=" * 74)
+        print("NON-LINEAR PROBE (gradient-boosted trees) vs LINEAR, novel pairings")
+        print("=" * 74)
+        print(f"{'site':<26}{'linear':>9}{'boosted':>9}{'delta':>8}{'bst-shuf':>10}")
+        for r in sorted(results, key=lambda x: -nonlinear[x.site]["acc_novel"])[:15]:
+            nl = nonlinear[r.site]
+            print(f"{r.site:<26}{r.acc_novel:>9.3f}{nl['acc_novel']:>9.3f}"
+                  f"{nl['acc_novel'] - r.acc_novel:>+8.3f}{nl['acc_shuffled']:>10.3f}")
+        deltas = [nonlinear[r.site]["acc_novel"] - r.acc_novel for r in results]
+        exp = [d for r, d in zip(results, deltas, strict=True) if r.tower == "expert"]
+        print(f"\nmean(boosted - linear): all sites {np.mean(deltas):+.3f}, "
+              f"expert sites {np.mean(exp):+.3f}")
+        print(f"expert sites where boosted beats linear by >0.10: "
+              f"{sum(1 for d in exp if d > 0.10)}/{len(exp)}")
+        print("If that count is near zero, the linear null inside the expert is a genuine")
+        print("absence rather than a limit of the probe's hypothesis class.")
+
     print(f"\nwritten -> {out_dir}")
     return 0
 

@@ -31,6 +31,10 @@ dependencies = [
     # method that sidesteps the causal-proximity confound which defeated the patching
     # sweep, so it is part of the main analysis path.
     "scikit-learn>=1.4",
+    # Non-linear counterpart to the linear probe (src/interp/probe.py). A linear null
+    # cannot distinguish "not encoded" from "not linearly readable"; boosted trees fail
+    # differently, which is what the standing two-method rule requires.
+    "xgboost>=2.0",
 ]
 
 [project.optional-dependencies]

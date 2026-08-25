@@ -115,6 +115,60 @@ def fit_probe(
     return float(clf.score(scaler.transform(x_test), y_test))
 
 
+def fit_probe_nonlinear(
+    x_train: np.ndarray,
+    y_train: np.ndarray,
+    x_test: np.ndarray,
+    y_test: np.ndarray,
+    seed: int = 0,
+) -> float:
+    """Gradient-boosted-tree accuracy, as a non-linear counterpart to `fit_probe`.
+
+    Why this exists. A linear probe answers "is the destination linearly readable from
+    this site". A null result there has two readings that matter very differently: the
+    information is absent, or it is present in a form a hyperplane cannot extract. The
+    paper reports a linear null inside the action expert on one checkpoint and a linear
+    hit on the other, and cannot currently tell those apart.
+
+    Trees are the right second method because they fail differently from a linear model:
+    axis-aligned splits find threshold and interaction structure that a hyperplane misses,
+    and they are indifferent to feature scaling. If the boosted probe also lands at chance
+    where the linear one did, "not encoded here" is a much safer reading. If it decodes
+    where the linear probe did not, the honest conclusion is that the destination is
+    present but not linearly available, which is a different claim from the paper's.
+
+    Deliberately matched to `fit_probe`: same split, same standardisation, same accuracy
+    readout. The only thing that changes is the hypothesis class, so a difference between
+    the two is attributable to linearity and not to preprocessing. It is also regularised
+    hard -- shallow trees, few rounds, subsampling -- because the training sets here are
+    small (hundreds of examples, hundreds of dimensions) and an unconstrained booster will
+    happily memorise them. The label-shuffled control is what catches that if it happens.
+    """
+    from sklearn.preprocessing import StandardScaler
+    from xgboost import XGBClassifier
+
+    if len(np.unique(y_train)) < 2 or x_test.shape[0] == 0:
+        return float("nan")
+    scaler = StandardScaler().fit(x_train)
+    clf = XGBClassifier(
+        n_estimators=200,
+        max_depth=3,
+        learning_rate=0.1,
+        subsample=0.8,
+        colsample_bytree=0.5,
+        reg_lambda=1.0,
+        # Objective is left to XGBoost. Forcing multi:softprob with num_class=2 makes it
+        # emit a 2-column indicator that sklearn's scorer cannot compare against binary
+        # labels; inferring it keeps the same call working for 2 and 4 destinations alike.
+        tree_method="hist",
+        random_state=seed,
+        n_jobs=4,
+        verbosity=0,
+    )
+    clf.fit(scaler.transform(x_train), y_train)
+    return float(clf.score(scaler.transform(x_test), y_test))
+
+
 def verdict(results: list[ProbeResult], margin: float = 0.10) -> dict[str, Any]:
     """Encoding vs readout, from the best-decoding site.
 

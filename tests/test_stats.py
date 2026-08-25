@@ -206,3 +206,49 @@ class TestClusterBootstrap:
     def test_mismatched_cluster_length_raises(self):
         with pytest.raises(ValueError, match="cluster has"):
             bootstrap_mean(np.zeros(10), cluster=np.zeros(3))
+
+
+# ------------------------------------------------------- non-linear probe (XGBoost)
+
+
+def test_nonlinear_probe_recovers_structure_a_linear_probe_cannot():
+    """The whole reason the boosted probe exists: XOR-like structure is invisible to a
+    hyperplane. If this ever fails, a null from `fit_probe_nonlinear` means nothing,
+    because the probe could not have found the signal even if it were there."""
+    import numpy as np
+
+    from src.interp.probe import fit_probe, fit_probe_nonlinear
+
+    rng = np.random.default_rng(0)
+    n, d = 600, 8
+    x = rng.normal(size=(n, d))
+    # label depends on the SIGN INTERACTION of two features -- no linear separator exists
+    y = ((x[:, 0] > 0) ^ (x[:, 1] > 0)).astype(int)
+    tr, te = slice(0, 400), slice(400, n)
+    lin = fit_probe(x[tr], y[tr], x[te], y[te])
+    nl = fit_probe_nonlinear(x[tr], y[tr], x[te], y[te])
+    assert lin < 0.65, f"linear probe should be near chance on XOR, got {lin}"
+    assert nl > 0.85, f"boosted probe should recover XOR, got {nl}"
+
+
+def test_nonlinear_probe_is_near_chance_on_shuffled_labels():
+    """The control that stops the boosted probe from manufacturing a result. A model this
+    flexible will memorise a small training set; held-out accuracy must still collapse."""
+    import numpy as np
+
+    from src.interp.probe import fit_probe_nonlinear
+
+    rng = np.random.default_rng(0)
+    x = rng.normal(size=(400, 40))
+    y = rng.integers(0, 4, size=400)
+    acc = fit_probe_nonlinear(x[:300], y[:300], x[300:], y[300:])
+    assert acc < 0.45, f"boosted probe on pure noise should be near 0.25, got {acc}"
+
+
+def test_nonlinear_probe_returns_nan_on_degenerate_input():
+    import numpy as np
+
+    from src.interp.probe import fit_probe_nonlinear
+
+    x = np.zeros((10, 3))
+    assert np.isnan(fit_probe_nonlinear(x, np.zeros(10, dtype=int), x, np.zeros(10, dtype=int)))

@@ -253,8 +253,8 @@ def fig_schematic(out_path: Path) -> bool:
 
     from matplotlib.patches import FancyBboxPatch
 
-    fig = plt.figure(figsize=(6.9, 3.95))
-    gs = fig.add_gridspec(2, 2, height_ratios=[1.16, 1.0], hspace=0.36,
+    fig = plt.figure(figsize=(6.9, 3.65))
+    gs = fig.add_gridspec(2, 2, height_ratios=[1.05, 1.0], hspace=0.34,
                           wspace=0.22, left=0.045, right=0.985, top=0.955, bottom=0.155)
 
     # ---- panel (a): the pipeline, then the three settings it is run in ---------
@@ -301,40 +301,31 @@ def fig_schematic(out_path: Path) -> bool:
     ax.text(0.160, 0.552, "same state, one changed word",
             fontsize=6.8, color=INK_SOFT, va="center", ha="left")
 
-    # The nodes describe the procedure, not just the objects. Note the middle box says "for
-    # each instruction" rather than "compare the two chunks": the paired-divergence readout
-    # is used for neutral and conflict (ifr.score_pair), but the compositional readout
-    # scores each trial on its own against the destination anchors
-    # (composition.score_direction). Saying the two chunks are compared would misstate the
-    # method behind the headline result.
-    _arrow(0.441, 0.470, ROW)
-    _box(0.472, 0.620, ROW - 0.150, ROW + 0.150,
-         "run the same\nSmolVLA policy\non A and on B", size=7.0)
-    _arrow(0.622, 0.651, ROW)
-    _box(0.653, 0.799, ROW - 0.150, ROW + 0.150,
-         "predicted action\nchunk for each\ninstruction", size=7.0)
-    _arrow(0.801, 0.830, ROW)
-    _box(0.832, 0.996, ROW - 0.150, ROW + 0.150,
-         "score whether the\nmotion follows\nthe changed word", size=7.0, fill="#eaf1fa")
+    # Two boxes, not three. The intermediate "predicted action chunk" node carried no
+    # information a reader could act on and cost a third of the row; the scoring box now
+    # says what is scored. Everything the boxes dropped is in the caption, which is the
+    # right place for detail that does not need to be seen at a glance.
+    _arrow(0.441, 0.487, ROW)
+    _box(0.490, 0.660, ROW - 0.130, ROW + 0.130, "SmolVLA policy,\nrun on A and on B",
+         size=7.5)
+    _arrow(0.662, 0.708, ROW)
+    _box(0.711, 0.996, ROW - 0.130, ROW + 0.130,
+         "which destination does\nthe predicted motion head toward?", size=7.5, fill="#eaf1fa")
 
-    # second row: the same paired test, run in three settings
-    ax.text(0.5, 0.383, "The same paired test is run in three settings",
-            fontsize=7.2, color=INK_SOFT, ha="center", va="center")
+    # Second row: the three settings. Name plus a short gloss -- full sentences here made
+    # the panel read as prose to be studied rather than a diagram to be scanned.
     setting = [
-        ("Neutral", "Before the grasp, the changed word\nshould redirect the first motion.",
-         "#f4f3ef"),
-        ("Conflict", "The arm already moves toward one\ngoal, and the command names another.",
-         "#fdf0e8"),
-        ("Composition", "Familiar object, familiar place,\nbut the pairing is held out.",
-         "#eaf1fa"),
+        ("Neutral", "before the grasp", "#f4f3ef"),
+        ("Conflict", "arm already heading elsewhere", "#fdf0e8"),
+        ("Composition", "pairing never demonstrated", "#eaf1fa"),
     ]
     for i, (name, body, fill) in enumerate(setting):
         x0 = 0.012 + i * 0.331
-        _box(x0, x0 + 0.311, 0.020, 0.315, "", fill=fill)
-        ax.text(x0 + 0.016, 0.245, name, fontsize=7.5, color=INK,
+        _box(x0, x0 + 0.311, 0.055, 0.300, "", fill=fill)
+        ax.text(x0 + 0.018, 0.228, name, fontsize=7.5, color=INK,
                 fontweight="bold", ha="left", va="center")
-        ax.text(x0 + 0.016, 0.115, body, fontsize=6.8, color=INK_SOFT,
-                ha="left", va="center", linespacing=1.4)
+        ax.text(x0 + 0.018, 0.125, body, fontsize=7.0, color=INK_SOFT,
+                ha="left", va="center")
 
     # ---- panels (b) and (c): what the contrast returns -------------------------
     # Labels sit INSIDE each panel above their bar rather than on the y-axis. Long
@@ -358,15 +349,14 @@ def fig_schematic(out_path: Path) -> bool:
 
     ax_b = fig.add_subplot(gs[1, 0])
     _bars(ax_b,
-          [("Conflict: arm already heading elsewhere", 94.6, 1.0),
-           ("Neutral state", 74.5, 0.45)],
+          [("Conflict", 94.6, 1.0), ("Neutral", 74.5, 0.45)],
           SERIES_A, "Follows the command (%)", None)
     _panel_label(ax_b, "b")
 
     ax_c = fig.add_subplot(gs[1, 1])
     _bars(ax_c,
-          [("Composition: bottle to the plate", p_plate * 100, 1.0),
-           ("Composition: bowl to the rack", p_rack * 100, 1.0)],
+          [("Bottle to the plate", p_plate * 100, 1.0),
+           ("Bowl to the rack", p_rack * 100, 1.0)],
           SERIES_B, "Heads to the named place (%)", None)
     _panel_label(ax_c, "c")
 
