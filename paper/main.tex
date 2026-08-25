@@ -76,7 +76,7 @@ Using a LIBERO-finetuned SmolVLA, we show the policy identical camera images pai
 instructions that differ in exactly one word. The failure is narrower than a
 ``vision overrides language'' account predicts. When the arm is already carrying an object
 toward one goal and the command names a different one, the policy follows the command on
-$94.6\%$ of trials $[91.7, 97.1]$, and on $74.5\%$ $[70.3, 78.8]$ of neutral
+$94.6\%$ of trials $[91.6, 97.4]$, and on $74.5\%$ $[68.8, 80.1]$ of neutral
 states~\citep{notallfeatures}. Failure appears only for untrained word combinations, and the
 resulting errors are structured: they favour places the object was previously paired with, by
 $11$ and $10$ percentage points above a uniform choice among the incorrect answers. The
@@ -281,8 +281,8 @@ $+0.325$ (artifact~7, \S\ref{sec:artifacts}).}
 \toprule
 Regime & Readout & Checkpoint A & Checkpoint B \\
 \midrule
-Neutral ($n{=}400$)        & directional IFR & $0.745$ $[0.703, 0.788]$ & not run \\
-Conflict ($n{=}240$)       & directional IFR & $0.946$ $[0.917, 0.971]$ & $0.929$ $[0.896, 0.958]$ \\
+Neutral ($n{=}400$)        & directional IFR & $0.745$ $[0.688, 0.801]$ & not run \\
+Conflict ($n{=}240$)       & directional IFR & $0.946$ $[0.916, 0.974]$ & $0.929$ $[0.898, 0.958]$ \\
 Compositional ($n{=}600$)  & destination gap & $+0.250$ $[0.180, 0.320]$ & $+0.193$ $[0.140, 0.250]$ \\
 \quad excluding the rack ($n{=}400$) & destination gap & $+0.215$ $[0.120, 0.310]$ & $+0.160$ $[0.065, 0.255]$ \\
 \bottomrule
@@ -380,9 +380,10 @@ one yields an apparently clean picture: VLM influence decaying with depth, exper
 rising toward the output. It is an artifact of causal proximity. Running the identical sweep on a
 \emph{control} contrast, where both instructions are trained and there is no failure to
 recover, reproduces the same
-profile (Fig.~\ref{fig:sweep}). Novel minus control has mean $-0.056$, replicated at a second
-trial count ($+0.046$), and \textbf{0 of 130 sites survive Benjamini--Hochberg correction} in
-either run.
+profile (Fig.~\ref{fig:sweep}). Novel minus control has mean $-0.056$ (median $-0.033$), and a
+second sweep on a different compute backend with a matched trial count gives $-0.041$ (median
+$-0.019$): the novel-specific effect is near zero and, if anything, negative at both. \textbf{0
+of 130 sites survive Benjamini--Hochberg correction} in any of the four runs.
 
 The observed profile follows from the architecture's intervention geometry. The action expert
 reads the backbone through \emph{per-layer} KV entries, so a patch at VLM layer $i$ reaches
@@ -401,7 +402,7 @@ state-grouped split, decodes the named destination in the VLM at $1.00$ on both 
 close to definitional, since the destination word is present in the input tokens.
 
 Inside the \emph{action expert} the picture does not replicate (Fig.~\ref{fig:probe}). One
-checkpoint has 37 expert sites decoding novel pairings above $0.5$, peaking at $0.985$; the
+checkpoint has 38 expert sites decoding novel pairings above $0.5$, peaking at $0.985$; the
 other has 2, with 29 sites \emph{below} $0.10$ against a chance level of $0.25$, reliably
 wrong rather than uninformative. \textbf{We therefore do not draw a readout-versus-encoding
 conclusion.} An earlier draft did, on one checkpoint alone.
@@ -504,16 +505,15 @@ removing it, since the object token sits inside the language block. No dose or p
 fixes it. \emph{Not yet fixed}: the design that would separate the two holds the words fixed and
 contrasts trials where the same novel instruction succeeds against trials where it fails.
 
-\paragraph{Determinism, and which backend to distrust.} Because flow-matching noise is pinned
-and the instrumented forward is exercised against the stock implementation, the pipeline is
-exactly reproducible: the full 130-site sweep run on CPU and on an A100 agrees to
-\textbf{$0.0000$ maximum absolute difference across all 130 sites}. That matters for reading
-the one backend that does \emph{not} agree: on Apple MPS we measured attention and MLP sites
-diverging from CPU by up to $0.21$, while residual-stream sites agreed to $0.014$. Exact
-CPU/CUDA agreement localises that to the MPS kernels rather than to the method, which is the
-difference between a caveat that bounds a result and one that merely worries about it. Anyone
-running interpretability sweeps on Apple silicon should check this before trusting per-site
-numbers.
+\paragraph{Determinism, and which backend to distrust.} Flow-matching noise is pinned and the
+instrumented forward is exercised against the stock implementation, so the sweep is
+deterministic within a backend. \emph{Across} backends it is not. Running the identical
+130-site sweep on CUDA and on Apple MPS, the same site can differ by up to $0.136$; the
+disagreement is largest at residual-stream sites (max $0.136$, mean $0.041$) and smaller at
+attention and MLP sites (max $0.078$ and $0.044$). Since the per-site effects we are testing
+are themselves of order $0.05$, MPS numbers cannot be trusted at the precision this analysis
+requires, and every result reported here comes from the CUDA runs. Anyone running
+interpretability sweeps on Apple silicon should measure this before trusting per-site numbers.
 
 \paragraph{6. A headline statistic with an $0.83$ floor.} We reported that $93$--$96\%$ of
 novel-command errors land on a destination the object was trained with, and read it as a
