@@ -98,16 +98,19 @@ artifacts that produced convincing but incorrect results in our own pipeline.
 \begin{figure}[t]
 \centering
 \includegraphics[width=\linewidth]{figures/fig1_schematic.pdf}
-\caption{\textbf{The design, and what it returns.} \textbf{(a)} A stimulus is one camera frame
-and robot state paired with two instructions differing in a single word, so any difference in
-the predicted action is attributable to that word. We score which destination the predicted
-motion heads toward, and run the same contrast in three settings. \textbf{(b)} Language is not
+\caption{\textbf{The design, and what it returns.} \textbf{(a)} A matched trial pair is one
+camera frame and robot state with two instructions differing in a single word. The same policy
+is run on each, so any difference between the two predicted action chunks is attributable to
+that word, and we score whether the motion follows it. The scoring rule differs by setting: for
+neutral and conflict it compares each chunk against the demonstrated trajectory, and for
+composition it asks which destination anchor the motion heads toward (\S\ref{sec:exp}). The same
+paired test is run in all three. \textbf{(b)} Language is not
 overridden by vision: when the arm is already carrying an object toward one goal and the command
 names another, the policy follows the command more often than it does from a neutral pre-grasp
 state. \textbf{(c)} It is composition that breaks. On an object--place pairing never
 demonstrated in training the policy degrades sharply, and for one pairing almost completely,
-though which place it heads toward still depends on the place the command names
-(\S\ref{sec:exp}), so the behaviour is not a fixed object-conditioned lookup. All values from
+though which place it heads toward still depends on the place the command names, so the
+behaviour is not a fixed object-conditioned lookup. All values from
 checkpoint~A.}
 \label{fig:schematic}
 \end{figure}
@@ -133,10 +136,11 @@ The second question matters because every intuitive measurement we constructed p
 apparently clean and statistically significant number that later proved to be an artifact. In
 each case, the error surfaced only through a check capable of contradicting it.
 
-Our stimuli are minimal contrastive pairs (Fig.~\ref{fig:schematic}): identical observations
-with instructions differing
-in exactly one referent, so any change in the predicted action is attributable to the swapped
-word. We test the competing accounts with matched behavioural contrasts. A
+Figure~\ref{fig:schematic} gives the experimental logic. Our stimuli are minimal contrastive
+pairs: for each stored state we run the same policy on two instructions differing in exactly one
+object or destination word. The camera image and robot state stay fixed, so any difference
+between the two predicted action chunks is attributable to the changed word. We test the
+competing accounts with matched behavioural contrasts. A
 \emph{vision-dominance} account predicts failure when the visual context opposes the
 instruction; we observe the opposite, with the policy redirecting mid-trajectory on $94.6\%$ of
 trials. An \emph{attention-lapse} account predicts unstructured error; errors are instead biased

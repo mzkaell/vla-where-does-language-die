@@ -294,27 +294,39 @@ def fig_schematic(out_path: Path) -> bool:
     # The two instructions are the literal strings handed to the policy, so they are
     # quoted at their real casing. SHOUTING the differing word misrepresents the input;
     # colour and the quotation marks carry the contrast instead.
-    ax.text(0.160, 0.885, "“put the bowl on the plate”", fontsize=7.5, color=SERIES_A,
+    ax.text(0.160, 0.885, "A:  “put the bowl on the plate”", fontsize=7.5, color=SERIES_A,
             va="center", ha="left")
-    ax.text(0.160, 0.720, "“put the bowl on the stove”", fontsize=7.5, color=SERIES_B,
+    ax.text(0.160, 0.720, "B:  “put the bowl on the stove”", fontsize=7.5, color=SERIES_B,
             va="center", ha="left")
-    ax.text(0.160, 0.552, "same pixels, one changed word",
+    ax.text(0.160, 0.552, "same state, one changed word",
             fontsize=6.8, color=INK_SOFT, va="center", ha="left")
 
-    _arrow(0.441, 0.477, ROW)
-    _box(0.480, 0.610, ROW - 0.115, ROW + 0.115, "SmolVLA\npolicy")
-    _arrow(0.612, 0.653, ROW)
-    _box(0.655, 0.785, ROW - 0.115, ROW + 0.115, "predicted\nmotion")
-    _arrow(0.787, 0.828, ROW)
-    _box(0.830, 0.988, ROW - 0.115, ROW + 0.115, "scored\ndestination", fill="#eaf1fa")
+    # The nodes describe the procedure, not just the objects. Note the middle box says "for
+    # each instruction" rather than "compare the two chunks": the paired-divergence readout
+    # is used for neutral and conflict (ifr.score_pair), but the compositional readout
+    # scores each trial on its own against the destination anchors
+    # (composition.score_direction). Saying the two chunks are compared would misstate the
+    # method behind the headline result.
+    _arrow(0.441, 0.470, ROW)
+    _box(0.472, 0.620, ROW - 0.150, ROW + 0.150,
+         "run the same\nSmolVLA policy\non A and on B", size=7.0)
+    _arrow(0.622, 0.651, ROW)
+    _box(0.653, 0.799, ROW - 0.150, ROW + 0.150,
+         "predicted action\nchunk for each\ninstruction", size=7.0)
+    _arrow(0.801, 0.830, ROW)
+    _box(0.832, 0.996, ROW - 0.150, ROW + 0.150,
+         "score whether the\nmotion follows\nthe changed word", size=7.0, fill="#eaf1fa")
 
-    # second row: the same contrast, run in three settings
-    ax.text(0.5, 0.395, "The same contrast is run in three settings",
+    # second row: the same paired test, run in three settings
+    ax.text(0.5, 0.383, "The same paired test is run in three settings",
             fontsize=7.2, color=INK_SOFT, ha="center", va="center")
     setting = [
-        ("Neutral", "Before the grasp, does the\ninstruction steer the arm?", "#f4f3ef"),
-        ("Conflict", "The arm is already heading\nto a different goal.", "#fdf0e8"),
-        ("Composition", "Familiar object, familiar place,\npairing never demonstrated.", "#eaf1fa"),
+        ("Neutral", "Before the grasp, the changed word\nshould redirect the first motion.",
+         "#f4f3ef"),
+        ("Conflict", "The arm already moves toward one\ngoal, and the command names another.",
+         "#fdf0e8"),
+        ("Composition", "Familiar object, familiar place,\nbut the pairing is held out.",
+         "#eaf1fa"),
     ]
     for i, (name, body, fill) in enumerate(setting):
         x0 = 0.012 + i * 0.331
