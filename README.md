@@ -18,10 +18,14 @@ same familiar words*: commanding "put the bowl on the rack" when only bowl→pla
 and bottle→rack were ever demonstrated.
 
 Under the strictest control (identical observation, only the object word changes, paired,
-**demonstration-clustered CIs**): trained→novel gap **+0.358 [+0.292, +0.425]** and
-**+0.325 [+0.273, +0.377]** on the two competent public checkpoints. The rack is the weakest
-destination even when trained, so excluding it: **+0.285** and **+0.265** — the effect is not
-one hard destination.
+**demonstration-clustered CIs**, and restricted to the three destinations that occur in *both*
+arms): trained→novel gap **+0.250 [+0.180, +0.320]** and **+0.193 [+0.140, +0.250]** on the two
+competent public checkpoints. The rack is the weakest destination even when trained, so
+excluding it: **+0.215** and **+0.160** — the effect is not one hard destination.
+
+The fourth destination, `top of the cabinet`, is trained for *both* objects, so it has trained
+trials and no novel ones and cannot enter the comparison. Including it inflates the gap to
++0.358 and +0.325; that was artifact #7.
 
 **Errors are biased, but this is not blind substitution.** They land on a destination the
 object *was* trained with **+0.111 [0.073, 0.144]** and **+0.098 [0.056, 0.134]** above chance.
@@ -89,7 +93,7 @@ novel combinations of the same familiar words (bowl->rack, bottle->plate) breaks
 | the stove | 0.889 -> 0.312 | 0.806 -> 0.500 |
 | the rack  | 0.188 -> 0.000 | 0.229 -> 0.014 |
 | **pooled gap** | **+0.410 [+0.329, +0.491]** | **+0.345 [+0.264, +0.431]** |
-| **pooled, fixed-state control (paired)** | **+0.250 [+0.197, +0.300]** | **+0.193 [+0.143, +0.243]** |
+| **matched gap, fixed-state control (paired, clustered)** | **+0.250 [+0.180, +0.320]** | **+0.193 [+0.140, +0.250]** |
 
 Held at a fixed destination word, so the policy's destination prior cannot explain it.
 Control passes (trained 0.74 / 0.70 vs chance 0.25). Replicates on both competent checkpoints.

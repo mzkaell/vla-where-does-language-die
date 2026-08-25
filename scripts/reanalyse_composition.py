@@ -91,6 +91,22 @@ def main() -> int:
 
         sub = substitution_excess(rows)
         sens = named_destination_sensitivity(rows)
+
+        # Destinations that appear in BOTH arms. `top of the cabinet` is trained for both
+        # objects, so it contributes 200 trained trials and no novel ones -- it cannot
+        # enter a trained-vs-novel comparison, and since the policy is unusually accurate
+        # there (0.86-0.88) leaving it in inflates the trained arm and the gap with it.
+        # This is artifact #7; see the SHARED-DESTINATION note in the paper.
+        shared = sorted(
+            {r["named_destination"] for r in rows if r["novel"]}
+            & {r["named_destination"] for r in rows if not r["novel"]}
+        )
+        matched = gap(rows, lambda r, s=shared: r["named_destination"] in s)
+        matched_no_rack = gap(
+            rows,
+            lambda r, s=shared: r["named_destination"] in s
+            and r["named_destination"] != "the rack",
+        )
         all_d = gap(rows, lambda r: True)
         no_rack = gap(rows, lambda r: r["named_destination"] != "the rack")
         per_dest = {
@@ -101,6 +117,9 @@ def main() -> int:
         out["runs"][run] = {
             "substitution": sub,
             "named_destination_sensitivity": sens,
+            "shared_destinations": shared,
+            "gap_matched": matched,
+            "gap_matched_excluding_rack": matched_no_rack,
             "gap_all_destinations": all_d,
             "gap_excluding_rack": no_rack,
             "gap_per_destination": per_dest,
@@ -118,7 +137,13 @@ def main() -> int:
         for k, v in sens["chose_the_named_destination"].items():
             print(f"    {k:34s} chose it {v:.2f} of the time")
         print("\n  GAP (trained - novel), demonstration-clustered")
-        for label, g in (("all destinations", all_d), ("excluding the rack", no_rack)):
+        print(f"    shared destinations: {', '.join(shared)}")
+        for label, g in (
+            ("MATCHED", matched),
+            ("MATCHED, no rack", matched_no_rack),
+            ("all dests (confounded)", all_d),
+            ("no rack (confounded)", no_rack),
+        ):
             if g:
                 print(f"    {label:20s} {g['trained']['mean']:.3f} -> {g['novel']['mean']:.3f}"
                       f"   gap {g['gap']:+.3f} [{g['gap_ci'][0]:+.3f}, {g['gap_ci'][1]:+.3f}]")

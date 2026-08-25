@@ -47,6 +47,57 @@
           "wine bottle told 'the stove'": 0.56
         }
       },
+      "shared_destinations": [
+        "the plate",
+        "the rack",
+        "the stove"
+      ],
+      "gap_matched": {
+        "trained": {
+          "mean": 0.59,
+          "n": 300,
+          "ci": [
+            0.5433333333333333,
+            0.6366666666666667
+          ]
+        },
+        "novel": {
+          "mean": 0.34,
+          "n": 300,
+          "ci": [
+            0.2833333333333333,
+            0.3933333333333333
+          ]
+        },
+        "gap": 0.24999999999999994,
+        "gap_ci": [
+          0.17999999999999994,
+          0.32000000000000006
+        ]
+      },
+      "gap_matched_excluding_rack": {
+        "trained": {
+          "mean": 0.72,
+          "n": 200,
+          "ci": [
+            0.665,
+            0.77
+          ]
+        },
+        "novel": {
+          "mean": 0.505,
+          "n": 200,
+          "ci": [
+            0.42,
+            0.585
+          ]
+        },
+        "gap": 0.21499999999999997,
+        "gap_ci": [
+          0.12,
+          0.31
+        ]
+      },
       "gap_all_destinations": {
         "trained": {
           "mean": 0.698,
@@ -212,6 +263,57 @@
           "wine bottle told 'the plate'": 0.34,
           "wine bottle told 'the stove'": 0.67
         }
+      },
+      "shared_destinations": [
+        "the plate",
+        "the rack",
+        "the stove"
+      ],
+      "gap_matched": {
+        "trained": {
+          "mean": 0.5466666666666666,
+          "n": 300,
+          "ci": [
+            0.5133333333333333,
+            0.58
+          ]
+        },
+        "novel": {
+          "mean": 0.35333333333333333,
+          "n": 300,
+          "ci": [
+            0.31,
+            0.39666666666666667
+          ]
+        },
+        "gap": 0.1933333333333333,
+        "gap_ci": [
+          0.13999999999999996,
+          0.25
+        ]
+      },
+      "gap_matched_excluding_rack": {
+        "trained": {
+          "mean": 0.665,
+          "n": 200,
+          "ci": [
+            0.605,
+            0.725
+          ]
+        },
+        "novel": {
+          "mean": 0.505,
+          "n": 200,
+          "ci": [
+            0.43,
+            0.58
+          ]
+        },
+        "gap": 0.16000000000000003,
+        "gap_ci": [
+          0.06500000000000006,
+          0.25499999999999995
+        ]
       },
       "gap_all_destinations": {
         "trained": {

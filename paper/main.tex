@@ -82,16 +82,16 @@ resulting errors are structured: they favour places the object was previously pa
 $11$ and $10$ percentage points above a uniform choice among the incorrect answers. The
 behaviour is nevertheless not a fixed object-conditioned destination lookup, because which
 place the policy heads toward still depends on which place the command names, selected on
-$34$ to $67\%$ of untrained trials. Paraphrasing the instruction leaves the effect unchanged on
-one of the two checkpoints; on the other it degrades even the trained pairings, which we report
-as evidence that surface-form memorisation is a separable failure mode.
+$34$ to $67\%$ of untrained trials. Paraphrasing the instruction leaves the effect in place on
+both checkpoints, though one of them shows sharp, destination-specific sensitivity to the exact
+wording, which we report as evidence that surface-form memorisation is a separable failure mode.
 
 We then report two negative results together with the controls that establish them. A
 130-site causal patching sweep appears to localize the failure, until the identical sweep on a
 contrast containing no failure reproduces the same profile; no site survives correction. A
 linear probe finds the instruction encoded in the vision-language backbone, but its results
 inside the action expert reverse between checkpoints. We release the stimulus generator, a
-competence gate that finds only $2$ of $8$ public checkpoints usable, and six measurement
+competence gate that finds only $2$ of $8$ public checkpoints usable, and seven measurement
 artifacts that produced convincing but incorrect results in our own pipeline.
 \end{abstract}
 
@@ -169,7 +169,7 @@ analyses (\S\ref{sec:exp}) do not achieve.
   command-conditioned heuristics remain compatible with our data.
 \item A checkpoint competence gate: only 2 of 8 public LIBERO SmolVLA checkpoints are usable,
   and four score worse than predicting an unrelated trajectory.
-\item Two negative results reported together with the controls that establish them, and six
+\item Two negative results reported together with the controls that establish them, and seven
   measurement artifacts that produced convincing but incorrect results in our own pipeline.
 \item A released, gate-validated contrastive stimulus generator, plus a reference-free
   directional readout that makes undemonstrated commands scoreable.
@@ -271,7 +271,10 @@ checkpoints 3 hours and 45 minutes before the compositional experiment was first
 \begin{table}[t]
 \caption{Grounding holds under neutral and conflicting conditions and breaks under composition.
 Compositional figures are the paired fixed-state control, which holds the observation
-byte-identical and varies only the object word.}
+byte-identical and varies only the object word, and are restricted to the three destinations
+that occur in \emph{both} arms. \texttt{top of the cabinet} is trained for both objects, so it
+contributes trained trials and no novel ones; including it inflates the gap to $+0.358$ and
+$+0.325$ (artifact~7, \S\ref{sec:artifacts}).}
 \label{tab:regimes}
 \centering
 \begin{tabular}{llll}
@@ -280,8 +283,8 @@ Regime & Readout & Checkpoint A & Checkpoint B \\
 \midrule
 Neutral ($n{=}400$)        & directional IFR & $0.745$ $[0.703, 0.788]$ & not run \\
 Conflict ($n{=}240$)       & directional IFR & $0.946$ $[0.917, 0.971]$ & $0.929$ $[0.896, 0.958]$ \\
-Compositional ($n{=}800$)  & destination gap & $+0.358$ $[0.292, 0.425]$ & $+0.325$ $[0.273, 0.377]$ \\
-\quad excluding the rack   & destination gap & $+0.285$ $[0.195, 0.375]$ & $+0.265$ $[0.185, 0.350]$ \\
+Compositional ($n{=}600$)  & destination gap & $+0.250$ $[0.180, 0.320]$ & $+0.193$ $[0.140, 0.250]$ \\
+\quad excluding the rack ($n{=}400$) & destination gap & $+0.215$ $[0.120, 0.310]$ & $+0.160$ $[0.065, 0.255]$ \\
 \bottomrule
 \end{tabular}
 \end{table}
@@ -303,8 +306,9 @@ separately, so no correction pools across conditions.
 Table~\ref{tab:regimes}. Under direct visual--motor conflict the policy redirects on command;
 under an undemonstrated pairing it degrades sharply. The rack is the weakest destination even
 when trained ($0.31$--$0.33$), so we report the gap with it excluded as well: the effect
-survives at $+0.285$ and $+0.265$. The cleanest single cell holds the destination word fixed
-and varies only the object: ``the stove'', trained $0.890$ versus novel $0.560$.
+survives at $+0.215$ and $+0.160$, the latter only just. The cleanest single cell holds the
+destination word fixed and varies only the object: ``the stove'', trained $0.890$ versus novel
+$0.560$.
 
 \paragraph{Errors are biased toward previously paired destinations.} When a novel command
 fails, the destination selected is more often one paired with that object during training than
@@ -330,25 +334,25 @@ command-conditioned heuristics that fall short of composing the relation, and we
 otherwise. The exception is $\textrm{bowl} \to \textrm{rack}$, selected on $0.01$--$0.05$ of
 trials, the one pairing for which we see almost no evidence of successful composition.
 
-\paragraph{Paraphrase: robust on one checkpoint, uninformative on the other.} Swapping the
+\paragraph{Paraphrase: the effect survives, and exposes surface-form sensitivity.} Swapping the
 object word changes tokenisation and token count as well as meaning, so we repeated the test
 with the command paraphrased: ``move the bowl to the rack'' in place of ``put the bowl on the
 rack'', altering verb, preposition and length while naming the same object and destination.
 
-On checkpoint~A the effect is unchanged: the gap is $+0.324$ $[0.272, 0.377]$ against $+0.358$
-$[0.292, 0.425]$ under LIBERO's own phrasing, with dependence on the named destination if
-anything stronger ($53\%$ and $69\%$ for the bottle). There, the degradation does not depend on
-the exact string.
+The compositional gap survives paraphrasing on both checkpoints: $+0.227$ $[0.170, 0.283]$ and
+$+0.150$ $[0.110, 0.187]$, against $+0.250$ and $+0.193$ under LIBERO's own phrasing. On
+checkpoint~A dependence on the named destination is if anything stronger ($53\%$ and $69\%$ for
+the bottle). The degradation is therefore not an artifact of one particular string.
 
-On checkpoint~B the comparison collapses, and instructively. Paraphrasing costs it not only the
-novel pairings but the \emph{trained} ones, whose accuracy falls from $0.678$ to $0.406$ --
-roughly the novel level -- leaving a gap of $-0.017$ $[-0.058, 0.025]$. The gap disappears
-because the whole comparison degrades, not because novel pairings improve. Checkpoint~B was
-trained from scratch on this task set, and this is what we would expect from a policy that has
-learned the ten LIBERO strings rather than their content: a policy that cannot restate the
-demonstrated tasks cannot be asked about undemonstrated ones. We therefore claim
-phrasing-robustness for checkpoint~A only, and read checkpoint~B as evidence that surface-form
-memorisation is a real and separable failure mode in this model family.
+Paraphrasing does, however, reveal strong surface-form sensitivity on checkpoint~B, and it is
+destination-specific rather than general: accuracy on trained pairings \emph{rises} for ``the
+plate'' ($0.52 \to 0.77$) and ``the stove'' ($0.81 \to 0.93$) while collapsing for ``the rack''
+($0.31 \to 0.02$) and \texttt{top of the cabinet} ($0.875 \to 0.155$). Checkpoint~B was trained
+from scratch on this task set, and a policy that has learned particular strings rather than
+their content is what would produce this. Because \texttt{top of the cabinet} carries no novel
+trials it does not enter the compositional comparison at all; an earlier draft included it and
+read the resulting $-0.017$ as the whole comparison degrading, which is artifact~7
+(\S\ref{sec:artifacts}).
 
 \paragraph{Two confounds this design does not remove.} An undemonstrated pairing is novel in
 two ways at once: it lacks a demonstrated \emph{meaning} and a demonstrated \emph{trajectory}.
@@ -459,11 +463,11 @@ availability, and we have not shown that an object$\leftrightarrow$destination r
 represented at all.
 
 \iflong
-\section{Six measurement artifacts}
+\section{Seven measurement artifacts}
 \label{sec:artifacts}
 
-Every result in this paper had a predecessor that was wrong. We report them because five of the
-six produced clean, statistically significant, entirely plausible numbers, and because the
+Every result in this paper had a predecessor that was wrong. We report them because six of the
+seven produced clean, statistically significant, entirely plausible numbers, and because the
 property that caught them generalises: each was exposed by a check \emph{capable of
 contradicting the headline}, never by re-reading code.
 
@@ -522,6 +526,20 @@ erred uniformly at random, which we had not done because the raw number looked d
 The lesson is narrow and cheap: a proportion whose denominator is constrained by the stimulus
 design needs its chance level computed from that design, not assumed to be uniform.
 
+\paragraph{7. An unmatched arm in the headline comparison.} The compositional gap was computed
+over all four destinations. But \texttt{top of the cabinet} is trained for \emph{both} objects,
+so it supplies $200$ trained trials and no novel ones: it cannot enter a trained-versus-novel
+comparison, and because the policy is unusually accurate there ($0.860$ and $0.875$) its
+presence raised the trained arm alone. The reported gap was $+0.358$ and $+0.325$; matched to
+the three destinations that occur in both arms it is $+0.250$ and $+0.193$. The effect survives,
+about a third smaller. The same error had a second consequence: it made the paraphrase control
+on checkpoint~B read as a total collapse ($-0.017$), when in fact the compositional gap there
+survives paraphrasing at $+0.150$ and what collapses is two specific destinations, one of which
+is the unmatched one. \emph{Caught by} a reader asking why Table~\ref{tab:regimes} and the
+per-destination appendix disagreed. The condition is easy to state and worth checking directly:
+every level of a grouping variable must appear in both arms of a difference, or the difference
+partly measures which levels are present.
+
 \paragraph{What generalises.} A layer $\times$ component heatmap offers fewer opportunities to
 visibly contradict itself than a scalar does. We would now require, before interpreting any such
 map: a competence gate on the checkpoint, a matched control condition in which the effect being
@@ -536,7 +554,11 @@ language \emph{is ignored}.
 \paragraph{Per-destination compositional gaps.} The fixed-state control, which holds the
 observation byte-identical and varies only the object word, gives positive gaps in all six
 destination $\times$ checkpoint cells: the plate $+0.100 / +0.180$, the stove $+0.330 / +0.140$,
-the rack $+0.320 / +0.260$. Pooled, $+0.250$ $[0.197, 0.300]$ and $+0.193$ $[0.143, 0.243]$.
+the rack $+0.320 / +0.260$. These are the three destinations that occur in both arms, and
+Table~\ref{tab:regimes} reports their combined gap. The fourth destination,
+\texttt{top of the cabinet}, is trained for both objects and so has no novel trials to compare
+against; the policy is unusually accurate there ($0.860$ and $0.875$), which is why including
+its $200$ trained-only trials inflates the gap by roughly $0.11$ and $0.13$.
 
 \paragraph{Conflict strength.} Binning the conflict regime by how far the demonstration has
 committed shows an apparent decline in the most-committed bin ($0.950 \to 0.900$ and
