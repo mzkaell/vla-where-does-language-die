@@ -1,4 +1,4 @@
-% Paper A -- RoboPAD short track (4 pp) / VLM4RWD (8 pp)
+% Paper A -- VLM4RWD (Aug 30, 8 pp) / RoboPAD (Sep 10, 9 pp). Both non-archival.
 %
 % Build:  pdflatex main && bibtex main && pdflatex main && pdflatex main
 %
@@ -11,9 +11,11 @@
 % ===========================================================================
 % TWO SWITCHES: content length, and venue.
 %
-% Both target venues take the full version, so \longtrue is the default:
-%   RoboPAD   9 pages of main content, references and appendix unlimited
-%   VLM4RWD   8 pages excluding references and appendices
+% Both target venues take the full version, so \longtrue is the default. Neither counts
+% references or appendices, and the artifacts and extended-results sections are
+% marked as an appendix below, so main content lands around 7 pages for both:
+%   VLM4RWD   Aug 30, 8 pages excluding references and appendices
+%   RoboPAD   Sep 10, 9 pages of main content, references and appendix unlimited
 % Set \longfalse only if a venue turns out to want the compressed version; it
 % drops the measurement-artifacts and extended-results sections.
 % ===========================================================================
@@ -464,13 +466,18 @@ availability, and we have not shown that an object$\leftrightarrow$destination r
 represented at all.
 
 \iflong
+% These two sections are supporting material, not main content, and both target venues
+% exclude appendices from the page limit. Marking them as an appendix rather than leaving
+% them as numbered sections is what makes the same source fit VLM4RWD's 8 pages and leaves
+% RoboPAD's 9 with room, without cutting anything.
+\appendix
 \section{Seven measurement artifacts}
 \label{sec:artifacts}
 
-Every result in this paper had a predecessor that was wrong. We report them because six of the
-seven produced clean, statistically significant, entirely plausible numbers, and because the
-property that caught them generalises: each was exposed by a check \emph{capable of
-contradicting the headline}, never by re-reading code.
+Several results in this paper had a predecessor that was wrong. We report them because six of
+the seven produced clean, statistically significant, entirely plausible numbers that would have
+survived review, and because the property that caught them generalises: each was exposed by a
+check \emph{capable of contradicting the headline}, never by re-reading code.
 
 \paragraph{1. One-sided stimulus set.} The generator consumed task A's states before reaching
 task B, and callers never took enough pairs to get there, so 100\% of states came from the
@@ -504,16 +511,6 @@ direction stayed near zero. Restricting to language-token positions localises th
 removing it, since the object token sits inside the language block. No dose or position slice
 fixes it. \emph{Not yet fixed}: the design that would separate the two holds the words fixed and
 contrasts trials where the same novel instruction succeeds against trials where it fails.
-
-\paragraph{Determinism, and which backend to distrust.} Flow-matching noise is pinned and the
-instrumented forward is exercised against the stock implementation, so the sweep is
-deterministic within a backend. \emph{Across} backends it is not. Running the identical
-130-site sweep on CUDA and on Apple MPS, the same site can differ by up to $0.136$; the
-disagreement is largest at residual-stream sites (max $0.136$, mean $0.041$) and smaller at
-attention and MLP sites (max $0.078$ and $0.044$). Since the per-site effects we are testing
-are themselves of order $0.05$, MPS numbers cannot be trusted at the precision this analysis
-requires, and every result reported here comes from the CUDA runs. Anyone running
-interpretability sweeps on Apple silicon should measure this before trusting per-site numbers.
 
 \paragraph{6. A headline statistic with an $0.83$ floor.} We reported that $93$--$96\%$ of
 novel-command errors land on a destination the object was trained with, and read it as a
@@ -559,6 +556,16 @@ Table~\ref{tab:regimes} reports their combined gap. The fourth destination,
 \texttt{top of the cabinet}, is trained for both objects and so has no novel trials to compare
 against; the policy is unusually accurate there ($0.860$ and $0.875$), which is why including
 its $200$ trained-only trials inflates the gap by roughly $0.11$ and $0.13$.
+
+\paragraph{Determinism, and which backend to distrust.} Flow-matching noise is pinned and the
+instrumented forward is exercised against the stock implementation, so the sweep is
+deterministic within a backend. \emph{Across} backends it is not. Running the identical
+130-site sweep on CUDA and on Apple MPS, the same site can differ by up to $0.136$; the
+disagreement is largest at residual-stream sites (max $0.136$, mean $0.041$) and smaller at
+attention and MLP sites (max $0.078$ and $0.044$). Since the per-site effects we are testing
+are themselves of order $0.05$, MPS numbers cannot be trusted at the precision this analysis
+requires, and every result reported here comes from the CUDA runs. Anyone running
+interpretability sweeps on Apple silicon should measure this before trusting per-site numbers.
 
 \paragraph{Conflict strength.} Binning the conflict regime by how far the demonstration has
 committed shows an apparent decline in the most-committed bin ($0.950 \to 0.900$ and

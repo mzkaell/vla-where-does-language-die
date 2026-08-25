@@ -360,20 +360,10 @@ def fig_schematic(out_path: Path) -> bool:
           SERIES_B, "Heads to the named place (%)", None)
     _panel_label(ax_c, "c")
 
-    # One caption per data panel, both on a single figure-coordinate baseline.
-    fig.canvas.draw()
-    captions = ("Vision does not override the command",
-                "Some pairings survive, others do not")
-    for a, cap in zip((ax_b, ax_c), captions, strict=True):
-        box = a.get_position()
-        t = fig.text(box.x0 + box.width / 2, 0.022, cap,
-                     fontsize=7, color=INK_SOFT, ha="center", va="bottom")
-        # A caption wider than its panel can run off the canvas. Measure and pull it back.
-        w = t.get_window_extent(fig.canvas.get_renderer())
-        w = w.transformed(fig.transFigure.inverted())
-        shift = max(0.005 - w.x0, 0.0) + min(0.995 - w.x1, 0.0)
-        if shift:
-            t.set_x(t.get_position()[0] + shift)
+    # No per-panel captions here. In the compiled paper they landed directly above the
+    # LaTeX \caption and read as orphaned sentences belonging to neither the figure nor the
+    # caption -- a defect visible only in the typeset PDF, not in the rendered figure. The
+    # caption makes both points already, at a size that survives print.
     fig.savefig(out_path)
     plt.close(fig)
     print(f"wrote {out_path}")
