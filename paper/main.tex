@@ -68,27 +68,37 @@ Decomposing a Grounding Failure in Vision-Language-Action Models}
 \maketitle
 
 \begin{abstract}
-Vision-language-action models turn a camera image and an English instruction into robot actions,
-so the instruction is the only channel through which a user can redirect the robot. A growing
-literature finds that these models under-use it, failing on object and place combinations they
-were never trained on~\citep{brittle,scaleup}. \emph{Why} they fail is unresolved, because
-vision dominance, inattention to language, and a memorised object-to-place prior all predict the
-same aggregate failure rate. We separate these accounts on a LIBERO-finetuned SmolVLA using
-matched contrastive controls: identical observations, instructions differing in exactly one
-word. The failure is narrower than a vision-dominance account predicts. When the arm is already
-carrying an object toward one goal and the command names another, the policy follows the command
-on $94.6\%$ of trials $[91.6, 97.4]$. Grounding breaks only for untrained word combinations,
-where accuracy falls by $0.250$ and $0.193$ on the two checkpoints that pass a competence gate.
-Errors favour places the object was trained with, but are not a fixed lookup: which place the
-policy heads toward still tracks which place was named. We then report two negative results
-alongside the controls that establish them. A 130-site causal patching sweep appears to localize
-the failure until a contrast containing no failure reproduces the same profile, leaving $0$ of
-$130$ sites significant after correction; and a probe finds the instruction encoded in the
-backbone but gives action-expert results that reverse between checkpoints. Only $2$ of $8$
-public checkpoints track the demonstrations well enough to measure at all. We release the
-stimuli, the gate, and seven measurement artifacts from our own pipeline, each caught only by a
-check capable of contradicting the headline, which we argue is the property such analyses should
-be built around.
+Robots controlled by vision-language-action models are given their tasks in ordinary English,
+and the instruction is the only channel through which a user can change what such a robot does.
+These models now perform well on standard manipulation benchmarks, yet a growing body of
+evidence finds that they lean on visual regularities rather than the words: they under-use the
+instruction, and they fail on object and place combinations they were never trained
+on~\citep{brittle,scaleup}. What that evidence does not settle is \emph{why}, because several
+different mechanisms predict the same aggregate failure rate. We test those explanations against
+each other using matched controls, and ask whether standard interpretability methods can locate
+the failure inside the network.
+
+Using a LIBERO-finetuned SmolVLA, we show the policy identical camera images paired with
+instructions that differ in exactly one word. The failure is narrower than a
+``vision overrides language'' account predicts. When the arm is already carrying an object
+toward one goal and the command names a different one, the policy follows the command on
+$94.6\%$ of trials $[91.6, 97.4]$, and on $74.5\%$ $[68.8, 80.1]$ of neutral
+states. Failure appears only for untrained word combinations, and the
+resulting errors are structured: they favour places the object was previously paired with, by
+$11$ and $10$ percentage points above a uniform choice among the incorrect answers. The
+behaviour is nevertheless not a fixed object-conditioned destination lookup, because which
+place the policy heads toward still depends on which place the command names, selected on
+$34$ to $67\%$ of untrained trials. Paraphrasing the instruction leaves the effect in place on
+both checkpoints, though one of them shows sharp, destination-specific sensitivity to the exact
+wording, which we report as evidence that surface-form memorisation is a separable failure mode.
+
+We then report two negative results together with the controls that establish them. A
+130-site causal patching sweep appears to localize the failure, until the identical sweep on a
+contrast containing no failure reproduces the same profile; no site survives correction. A
+linear probe finds the instruction encoded in the vision-language backbone, but its results
+inside the action expert reverse between checkpoints. We release the stimulus generator, a
+competence gate that finds only $2$ of $8$ public checkpoints usable, and seven measurement
+artifacts that produced convincing but incorrect results in our own pipeline.
 \end{abstract}
 
 \begin{figure}[t]
