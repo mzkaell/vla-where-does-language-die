@@ -1,0 +1,79 @@
+{
+  "n": 400,
+  "sensitivity": {
+    "value": 5.7606849330663685,
+    "lo": 5.494815634258091,
+    "hi": 6.031149232290685,
+    "n": 400,
+    "resamples": 10000,
+    "alpha": 0.05,
+    "excludes_zero": true
+  },
+  "directional_ifr": {
+    "value": 0.745,
+    "lo": 0.7025,
+    "hi": 0.7875,
+    "n": 400,
+    "resamples": 10000,
+    "alpha": 0.05,
+    "excludes_zero": true
+  },
+  "directional_p_vs_chance": 9.999000099990002e-05,
+  "chance_level": 0.5,
+  "by_family": {
+    "destination_swap": {
+      "n": 320,
+      "sensitivity": {
+        "value": 6.107875770330429,
+        "lo": 5.783961909804493,
+        "hi": 6.429817082495428,
+        "n": 320,
+        "resamples": 10000,
+        "alpha": 0.05,
+        "excludes_zero": true
+      },
+      "directional_ifr": {
+        "value": 0.71875,
+        "lo": 0.66875,
+        "hi": 0.76875,
+        "n": 320,
+        "resamples": 10000,
+        "alpha": 0.05,
+        "excludes_zero": true
+      }
+    },
+    "object_swap": {
+      "n": 80,
+      "sensitivity": {
+        "value": 4.371921584010124,
+        "lo": 4.2159630774706605,
+        "hi": 4.532073526754975,
+        "n": 80,
+        "resamples": 10000,
+        "alpha": 0.05,
+        "excludes_zero": true
+      },
+      "directional_ifr": {
+        "value": 0.85,
+        "lo": 0.7625,
+        "hi": 0.925,
+        "n": 80,
+        "resamples": 10000,
+        "alpha": 0.05,
+        "excludes_zero": true
+      }
+    }
+  },
+  "by_conflict_strength": [],
+  "same_instruction_control": {
+    "n": 20,
+    "max_divergence": 0.0,
+    "passed": true
+  },
+  "competence": {
+    "median_pred_to_demo": 3.983811378479004,
+    "note": "run scripts/check_competence.py --run <id> for the baseline-relative ratio"
+  },
+  "reference": "demo_action_chunk",
+  "image_orientation": "rot180"
+}

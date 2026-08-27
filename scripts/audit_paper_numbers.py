@@ -135,6 +135,11 @@ CHECKS: list[tuple[str, float, Callable[[], float]]] = [
     ("conflict IFR lo (clustered)",    0.916, lambda: _ifr("conflict_finetune")[1]),
     ("conflict IFR hi (clustered)",    0.974, lambda: _ifr("conflict_finetune")[2]),
     ("conflict IFR, ckpt B",           0.929, lambda: _ifr("conflict_scratch80k")[0]),
+    ("neutral IFR, ckpt B",            0.745, lambda: _ifr("m0_v2_scratch80k")[0]),
+    ("neutral IFR lo, ckpt B",         0.686, lambda: _ifr("m0_v2_scratch80k")[1]),
+    ("neutral IFR hi, ckpt B",         0.801, lambda: _ifr("m0_v2_scratch80k")[2]),
+    ("neutral pairs A and B disagree", 56.0,
+         lambda: _neutral_disagreement()),
     # -- compositional gap, matched to shared destinations -------------------------
     ("compositional gap, ckpt A",      0.250, lambda: _matched_gap("fs_finetune")),
     ("compositional gap, ckpt B",      0.193, lambda: _matched_gap("fs_scratch80k")),
@@ -196,6 +201,18 @@ CHECKS: list[tuple[str, float, Callable[[], float]]] = [
     ("geometry floor, ckpt A",         0.496,
      lambda: _metrics("geometry_null")["runs"]["fs_finetune"]["majority_class_floor"]),
 ]
+
+
+def _neutral_disagreement() -> float:
+    """Pairs where the two checkpoints differ, guarding the equal-totals coincidence.
+
+    Both neutral cells read 0.745. That is close enough to a duplicated run that the paper
+    says so explicitly, so the claim needs its own check: if a future rerun ever loads the
+    same checkpoint twice this drops to zero and the audit fails.
+    """
+    a = {r["pair_id"]: r["followed_instruction"] for r in _pairs("m0_v2_k1000dai")}
+    b = {r["pair_id"]: r["followed_instruction"] for r in _pairs("m0_v2_scratch80k")}
+    return float(sum(1 for k in a.keys() & b.keys() if a[k] != b[k]))
 
 
 def _named_ci(run: str, obj: str, dest: str) -> tuple[float, float]:

@@ -294,7 +294,9 @@ Compositional figures are the paired fixed-state control, which holds the observ
 byte-identical and varies only the object word, and are restricted to the three destinations
 that occur in \emph{both} arms. \texttt{top of the cabinet} is trained for both objects, so it
 contributes trained trials and no novel ones; including it inflates the gap to $+0.358$ and
-$+0.325$ (artifact~7, \S\ref{sec:artifacts}).}
+$+0.325$ (artifact~7, \S\ref{sec:artifacts}). The two neutral cells agree by coincidence rather
+than by construction: the checkpoints disagree on $56$ of the $400$ pairs and share no predicted
+divergence, but each happens to follow the instruction on $298$ of them.}
 \label{tab:regimes}
 \centering
 \resizebox{\linewidth}{!}{%
@@ -302,7 +304,7 @@ $+0.325$ (artifact~7, \S\ref{sec:artifacts}).}
 \toprule
 Regime & Readout & Checkpoint A & Checkpoint B \\
 \midrule
-Neutral ($n{=}400$)        & directional IFR & $0.745$ $[0.688, 0.801]$ & not run \\
+Neutral ($n{=}400$)        & directional IFR & $0.745$ $[0.688, 0.801]$ & $0.745$ $[0.686, 0.801]$ \\
 Conflict ($n{=}240$)       & directional IFR & $0.946$ $[0.916, 0.974]$ & $0.929$ $[0.898, 0.958]$ \\
 Compositional ($n{=}600$)  & destination gap & $+0.250$ $[0.180, 0.320]$ & $+0.193$ $[0.140, 0.250]$ \\
 \quad excluding the rack ($n{=}400$) & destination gap & $+0.215$ $[0.120, 0.310]$ & $+0.160$ $[0.065, 0.255]$ \\
