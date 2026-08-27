@@ -24,7 +24,7 @@
 
 % Venue only affects the footnote title. Pick one.
 \newif\ifrobopad
-\robopadtrue        % \robopadtrue for RoboPAD, \robopadfalse for VLM4RWD
+\robopadfalse       % \robopadtrue for RoboPAD, \robopadfalse for VLM4RWD
 
 \documentclass{article}
 \usepackage[dblblindworkshop]{neurips_2026}
@@ -455,6 +455,18 @@ other has 2, with 29 sites \emph{below} $0.10$ against a chance level of $0.25$,
 wrong rather than uninformative. \textbf{We therefore do not draw a readout-versus-encoding
 conclusion.} An earlier draft did, on one checkpoint alone.
 
+\textbf{The expert-side null is not an artifact of linearity.} A linear null admits two
+readings that differ in what they claim about the model: the destination is not encoded at
+that site, or it is encoded in a form no hyperplane can read. To separate them we refit every
+site with gradient-boosted trees on the same split, the same standardisation and the same
+accuracy readout, so that only the hypothesis class changes. The boosted probe finds
+essentially nothing the linear one missed. Averaged over the $65$ expert sites it scores
+$-0.047$ and $+0.007$ relative to the linear probe on the two checkpoints, and on each only
+two sites gain more than $0.10$ while holding their own label-shuffled control near chance.
+We therefore read the expert-side null as an absence rather than a limitation of the probe's
+hypothesis class, which is the stronger of the two available conclusions and the one an
+interpretability claim needs.
+
 Systematic sub-chance decoding is unlikely to be noise: with four balanced classes it requires
 a consistent mapping to a wrong class. \emph{One hypothesis}, which we state without endorsing,
 is that the expert represents the destination the policy will actually move toward rather than
@@ -610,8 +622,13 @@ deterministic within a backend. \emph{Across} backends it is not. Running the id
 disagreement is largest at residual-stream sites (max $0.136$, mean $0.041$) and smaller at
 attention and MLP sites (max $0.078$ and $0.044$). Since the per-site effects we are testing
 are themselves of order $0.05$, MPS numbers cannot be trusted at the precision this analysis
-requires, and every result reported here comes from the CUDA runs. Anyone running
-interpretability sweeps on Apple silicon should measure this before trusting per-site numbers.
+requires, and every \emph{patching} result reported here comes from the CUDA runs. One analysis
+was run on MPS, the boosted probe of \S\ref{sec:exp}, and we checked it rather than assuming the
+divergence carries over: probe accuracy is a much coarser readout than a per-site recovery
+scalar, and its linear arm reproduces the CUDA linear run to a maximum absolute difference of
+$0.022$ and $0.037$, returning identical site counts on both checkpoints. Anyone running
+interpretability sweeps on Apple silicon should measure this per readout rather than trusting or
+dismissing the backend wholesale.
 
 \textbf{Conflict strength.} Binning the conflict regime by how far the demonstration has
 committed shows an apparent decline in the most-committed bin ($0.950 \to 0.900$ and

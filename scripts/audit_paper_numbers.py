@@ -191,6 +191,15 @@ CHECKS: list[tuple[str, float, Callable[[], float]]] = [
          lambda: _expert_sites("probe_big_grouped_scratch80k", lambda a: a > 0.5)),
     ("expert sites <0.10, ckpt B",    29.0,
          lambda: _expert_sites("probe_big_grouped_scratch80k", lambda a: a < 0.10)),
+    # -- non-linear probe (Anant's MPS run) -----------------------------------------
+    ("boosted-linear mean, ckpt A",   -0.047, lambda: _nl_delta("probe_nl_finetune")),
+    ("boosted-linear mean, ckpt B",    0.007, lambda: _nl_delta("probe_nl_scratch_80k")),
+    ("real gains >0.10, ckpt A",        2.0,  lambda: _nl_gains("probe_nl_finetune")),
+    ("real gains >0.10, ckpt B",        2.0,  lambda: _nl_gains("probe_nl_scratch_80k")),
+    ("MPS/CUDA linear agree, ckpt A",   0.022,
+         lambda: _nl_vs_cuda("probe_nl_finetune", "probe_big_grouped")),
+    ("MPS/CUDA linear agree, ckpt B",   0.037,
+         lambda: _nl_vs_cuda("probe_nl_scratch_80k", "probe_big_grouped_scratch80k")),
     # -- backend divergence ----------------------------------------------------------
     ("CUDA/MPS max diff, resid_post",  0.136, lambda: _backend_max_diff("resid_post")),
     ("CUDA/MPS max diff, attn_out",    0.078, lambda: _backend_max_diff("attn_out")),
@@ -213,6 +222,42 @@ def _neutral_disagreement() -> float:
     a = {r["pair_id"]: r["followed_instruction"] for r in _pairs("m0_v2_k1000dai")}
     b = {r["pair_id"]: r["followed_instruction"] for r in _pairs("m0_v2_scratch80k")}
     return float(sum(1 for k in a.keys() & b.keys() if a[k] != b[k]))
+
+
+def _nl_expert(run: str):
+    d = _metrics(run)
+    return d, [s for s in d["sites"] if s["site"].startswith("expert.")]
+
+
+def _nl_delta(run: str) -> float:
+    d, exp = _nl_expert(run)
+    nl = d["nonlinear"]
+    return float(np.mean([nl[s["site"]]["acc_novel"] - s["acc_novel"] for s in exp]))
+
+
+def _nl_gains(run: str) -> float:
+    """Expert sites where boosted beats linear by >0.10 AND its shuffled control stays low.
+
+    The shuffled condition is the point: a booster on a few hundred examples can manufacture
+    accuracy, and without it a "gain" cannot be told apart from overfitting.
+    """
+    d, exp = _nl_expert(run)
+    nl = d["nonlinear"]
+    return float(sum(
+        1 for s in exp
+        if nl[s["site"]]["acc_novel"] - s["acc_novel"] > 0.10
+        and nl[s["site"]]["acc_shuffled"] < 0.35
+    ))
+
+
+def _nl_vs_cuda(mps_run: str, cuda_run: str) -> float:
+    """Max |diff| between the MPS run's LINEAR arm and the CUDA linear run.
+
+    Guards the claim that running the boosted probe on Apple silicon did not compromise it.
+    """
+    _, exp = _nl_expert(mps_run)
+    ref = {s["site"]: s["acc_novel"] for s in _metrics(cuda_run)["sites"]}
+    return max(abs(s["acc_novel"] - ref[s["site"]]) for s in exp if s["site"] in ref)
 
 
 def _named_ci(run: str, obj: str, dest: str) -> tuple[float, float]:
