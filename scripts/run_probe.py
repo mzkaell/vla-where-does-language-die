@@ -17,8 +17,10 @@ from __future__ import annotations
 import argparse
 import json
 import platform
+import subprocess
 import sys
 import time
+from importlib.metadata import PackageNotFoundError, version
 from pathlib import Path
 
 import numpy as np
@@ -38,10 +40,61 @@ from src.eval.composition import (  # noqa: E402
 from src.interp.probe import (  # noqa: E402
     ProbeResult,
     fit_probe,
-    fit_probe_nonlinear,
     pool_activation,
     verdict,
 )
+
+
+def _package_version(name: str) -> str | None:
+    try:
+        return version(name)
+    except PackageNotFoundError:
+        return None
+
+
+def _fit_nonlinear_in_subprocess(
+    out_dir: Path,
+    site_names: list[str],
+    acts: dict[str, list[np.ndarray]],
+    y: np.ndarray,
+    tr: np.ndarray,
+    te: np.ndarray,
+    nv: np.ndarray,
+    seed: int,
+) -> dict[str, dict[str, float]]:
+    """Fit XGBoost probes in a fresh process.
+
+    On macOS/arm64, XGBoost can segfault if it receives NumPy labels after Torch/MPS has
+    already been active in the process. Keeping the boosted trees in a CPU-only child
+    preserves the probe definition while letting the parent own the Metal forward pass.
+    """
+    input_path = out_dir / "nonlinear_input.npz"
+    output_path = out_dir / "nonlinear_metrics.json"
+    np.savez_compressed(
+        input_path,
+        y=y,
+        tr=tr.astype(int),
+        te=te.astype(int),
+        nv=nv.astype(int),
+        site_names=np.asarray(site_names),
+        **{name: np.stack(acts[name]) for name in site_names},
+    )
+    subprocess.run(
+        [
+            sys.executable,
+            "-m",
+            "scripts.fit_probe_nonlinear",
+            "--input",
+            str(input_path),
+            "--output",
+            str(output_path),
+            "--seed",
+            str(seed),
+        ],
+        check=True,
+        cwd=REPO_ROOT,
+    )
+    return json.loads(output_path.read_text(encoding="utf-8"))
 
 
 def main() -> int:
@@ -105,6 +158,7 @@ def main() -> int:
                 "destinations": dests, "chance": chance, "seed": args.seed,
                 "device": args.device, "image_orientation": "rot180",
                 "state_composition": list(STATE_KEYS), "platform": platform.platform(),
+                "xgboost_version": _package_version("xgboost"),
             }.items()
         ),
         encoding="utf-8",
@@ -185,7 +239,7 @@ def main() -> int:
         )
         print(f"  cached activations -> {out_dir / 'activations.npz'}")
 
-    results, nonlinear = [], {}
+    results = []
     for s in sites:
         X = np.stack(acts[s.name])
         acc_tr = fit_probe(X[tr], y[tr], X[te], y[te], seed=args.seed)
@@ -200,18 +254,16 @@ def main() -> int:
                 acc_trained=acc_tr, acc_novel=acc_nv, acc_shuffled=acc_sh, chance=chance,
             )
         )
-        if args.nonlinear:
-            # Same split, same standardisation, same readout -- only the hypothesis class
-            # differs, so any gap over the linear probe is attributable to linearity. The
-            # shuffled control is refit under the booster too: a model this flexible can
-            # manufacture accuracy on a small training set, and only its own null shows it.
-            nonlinear[s.name] = {
-                "acc_trained": fit_probe_nonlinear(X[tr], y[tr], X[te], y[te], seed=args.seed),
-                "acc_novel": fit_probe_nonlinear(X[tr], y[tr], X[nv], y[nv], seed=args.seed),
-                "acc_shuffled": fit_probe_nonlinear(X[tr], y_shuf, X[te], y[te], seed=args.seed),
-            }
-            if len(nonlinear) % 10 == 0:
-                print(f"    non-linear probe: {len(nonlinear)}/{len(sites)} sites", flush=True)
+
+    nonlinear = {}
+    if args.nonlinear:
+        # Same split, same standardisation, same readout -- only the hypothesis class
+        # differs, so any gap over the linear probe is attributable to linearity. The
+        # boosted fit runs in a fresh CPU-only process because XGBoost can segfault after
+        # Torch/MPS has been active on macOS/arm64.
+        nonlinear = _fit_nonlinear_in_subprocess(
+            out_dir, site_names, acts, y, tr, te, nv, args.seed
+        )
 
     v = verdict(results)
     payload: dict = {"verdict": v, "sites": [r.as_dict() for r in results]}
