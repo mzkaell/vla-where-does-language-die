@@ -1,3 +1,4 @@
+# ruff: noqa: I001
 """Shared fixtures.
 
 The real-weights fixtures are session-scoped: loading SmolVLA costs ~20s on CPU and
@@ -6,8 +7,10 @@ every test in the patching suite needs the same frozen model.
 
 from __future__ import annotations
 
+# XGBoost must initialise before any test imports torch on macOS/arm64; reversing this
+# order can segfault in XGBoost's native label bridge.
+import xgboost  # noqa: F401, I001
 import pytest
-import torch
 
 CHECKPOINT = "lerobot/smolvla_base"
 
@@ -36,6 +39,8 @@ def model():
 @pytest.fixture(scope="session")
 def batch(model):
     """A fixed, deterministic input batch. Content is arbitrary but stable."""
+    import torch
+
     from src.models.smolvla import make_batch, pair_pad_length
 
     cfg = model.config
@@ -59,6 +64,8 @@ def batch(model):
 @pytest.fixture(scope="session")
 def alt_batch(model):
     """Same scene, different instruction -- the minimal contrastive manipulation."""
+    import torch
+
     from src.models.smolvla import make_batch, pair_pad_length
 
     cfg = model.config

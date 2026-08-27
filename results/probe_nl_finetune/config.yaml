@@ -1,0 +1,12 @@
+run_id: "probe_nl_finetune"
+experiment: "layerwise_destination_probe"
+checkpoint: "k1000dai/smolvla_libero_finetune"
+n_states: 150
+destinations: ["the plate", "the stove", "top of the cabinet", "the rack"]
+chance: 0.25
+seed: 0
+device: "mps"
+image_orientation: "rot180"
+state_composition: ["ee_pos", "ee_ori", "gripper_states"]
+platform: "macOS-15.6.1-arm64-arm-64bit"
+xgboost_version: "3.4.1"
