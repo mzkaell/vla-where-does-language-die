@@ -98,7 +98,13 @@ contrast containing no failure reproduces the same profile; no site survives cor
 linear probe finds the instruction encoded in the vision-language backbone, but its results
 inside the action expert reverse between checkpoints. We release the stimulus generator, a
 competence gate that finds only $2$ of $8$ public checkpoints usable, and seven measurement
-artifacts that produced convincing but incorrect results in our own pipeline.
+artifacts that produced convincing but incorrect results in our own pipeline. The gate and the
+artifacts point the same way: here a localization result was only as trustworthy as the control
+that could have overturned it, and we release the contrastive conditions such a control needs.
+The confound behind our sweep is architectural rather than incidental, since an action decoder
+reading its backbone through per-layer caches ties an intervention's reach to its depth; we
+state that as a hypothesis for other encoder--decoder policies rather than a demonstrated
+general result.
 \end{abstract}
 
 \begin{figure}[t]
