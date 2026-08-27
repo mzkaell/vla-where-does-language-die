@@ -35,6 +35,7 @@ import numpy as np
 REPO_ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(REPO_ROOT))
 
+from src.eval.composition import demo_of as _demo_of  # noqa: E402
 from src.eval.stats import bootstrap_mean  # noqa: E402
 
 TOL = 0.0015  # values are quoted to three decimals
@@ -157,6 +158,22 @@ CHECKS: list[tuple[str, float, Callable[[], float]]] = [
          lambda: _named("fs_scratch80k", "wine bottle told 'the stove'")),
     ("bowl to rack, ckpt A",           0.010,
          lambda: _named("fs_finetune", "bowl told 'the rack'")),
+    ("bottle told plate lo, ckpt A",   0.370,
+         lambda: _named_ci("fs_finetune", "wine bottle", "the plate")[0]),
+    ("bottle told plate hi, ckpt A",   0.530,
+         lambda: _named_ci("fs_finetune", "wine bottle", "the plate")[1]),
+    ("bottle told stove lo, ckpt A",   0.460,
+         lambda: _named_ci("fs_finetune", "wine bottle", "the stove")[0]),
+    ("bottle told stove hi, ckpt A",   0.660,
+         lambda: _named_ci("fs_finetune", "wine bottle", "the stove")[1]),
+    ("bottle told plate lo, ckpt B",   0.270,
+         lambda: _named_ci("fs_scratch80k", "wine bottle", "the plate")[0]),
+    ("bottle told stove hi, ckpt B",   0.770,
+         lambda: _named_ci("fs_scratch80k", "wine bottle", "the stove")[1]),
+    ("stove within-dest gap, ckpt A",  0.330,
+         lambda: _dest_gap("fs_finetune", "the stove")),
+    ("plate within-dest gap, ckpt A",  0.100,
+         lambda: _dest_gap("fs_finetune", "the plate")),
     # -- the two negative results ---------------------------------------------------
     ("sweep novel-control (CUDA)",    -0.056,
          lambda: _sweep_diff("loc_finetune", "locctl_finetune")),
@@ -179,6 +196,26 @@ CHECKS: list[tuple[str, float, Callable[[], float]]] = [
     ("geometry floor, ckpt A",         0.496,
      lambda: _metrics("geometry_null")["runs"]["fs_finetune"]["majority_class_floor"]),
 ]
+
+
+def _named_ci(run: str, obj: str, dest: str) -> tuple[float, float]:
+    """Clustered interval on "chose the named destination" for one object/destination cell."""
+    rows = [
+        r for r in _trials(run)
+        if r["novel"] and r["object"] == obj and r["named_destination"] == dest
+    ]
+    x = np.array([float(r["chosen_destination"] == dest) for r in rows])
+    est = bootstrap_mean(
+        x, resamples=10_000, seed=0, cluster=[_demo_of(r["trial_id"]) for r in rows]
+    )
+    return est.lo, est.hi
+
+
+def _dest_gap(run: str, dest: str) -> float:
+    rows = [r for r in _trials(run) if r["named_destination"] == dest]
+    tr = [r["correct"] for r in rows if not r["novel"]]
+    nv = [r["correct"] for r in rows if r["novel"]]
+    return float(np.mean(tr) - np.mean(nv))
 
 
 def _confounded(run: str) -> float:

@@ -320,6 +320,18 @@ replacement together with all of their predictions), $10{,}000$ resamples. Trial
 resampling gives visibly narrower intervals; clustering widens all of them and moves one cell
 (``the plate'' on checkpoint~A) from significant to not.
 
+We attach intervals to every quantity a claim rests on, and omit them elsewhere for space, so
+their absence is deliberate rather than selective. Three kinds of number appear without one:
+design constants that are not estimates at all (the gate thresholds, the four-way chance level
+of $0.25$, the $130$ sites); descriptive breakdowns whose inferential work is done by an
+accompanying test, such as per-site probe accuracies, which are judged against their own
+label-shuffled control, and the patching means, which are judged against
+Benjamini--Hochberg correction over the site family; and secondary figures quoted to
+characterise a pattern already established by an interval reported nearby. Every interval in
+the paper, including those in the appendix, is regenerated from the committed runs by
+\texttt{scripts/audit\_paper\_numbers.py}, which fails if any printed value drifts from what
+the data give.
+
 The Benjamini--Hochberg family for the patching sweep is the $130$ sites \emph{within a single
 run}: novel and control runs are corrected separately, and the two checkpoints are corrected
 separately, so no correction pools across conditions.
@@ -350,13 +362,17 @@ the excess is $+0.111$ $[0.073, 0.144]$ and $+0.098$ $[0.056, 0.134]$.
 \textbf{The behaviour is command-dependent.} That bias is modest, and it is not consistent
 with a \emph{fixed object-conditioned lookup}. Which destination the policy selects depends on
 which destination was named: the bottle commanded to ``the plate'' is scored as heading there
-on $0.45$ of trials and to ``the stove'' on $0.04$; commanded to ``the stove'' those become
-$0.07$ and $0.56$ (checkpoint~A; the corresponding diagonal on B is $0.34$ and $0.67$). A
-policy whose destination depended only on the object would give the same distribution under
-both commands. This rules out that specific hypothesis; it does not rule out richer
-command-conditioned heuristics that fall short of composing the relation, and we do not claim
-otherwise. The exception is $\textrm{bowl} \to \textrm{rack}$, selected on $0.01$--$0.05$ of
-trials, the one pairing for which we see almost no evidence of successful composition.
+on $0.450$ $[0.370, 0.530]$ of trials and to ``the stove'' on $0.04$; commanded to ``the
+stove'' those become $0.07$ and $0.560$ $[0.460, 0.660]$ (checkpoint~A, $n{=}100$ per cell; the
+corresponding diagonal on B is $0.340$ $[0.270, 0.410]$ and $0.670$ $[0.570, 0.770]$). The two
+intervals within a checkpoint do not overlap, so the shift with the command is resolved and not
+an artifact of the interval width. A policy whose destination depended only on the object would
+give the same distribution under both commands. This rules out that specific hypothesis; it
+does not rule out richer command-conditioned heuristics that fall short of composing the
+relation, and we do not claim otherwise. The exception is
+$\textrm{bowl} \to \textrm{rack}$, selected on $0.010$ $[0.000, 0.030]$ and $0.050$
+$[0.010, 0.100]$ of trials, the one pairing for which we see almost no evidence of successful
+composition.
 
 \textbf{Paraphrase: the effect survives, and exposes surface-form sensitivity.} Swapping the
 object word changes tokenisation and token count as well as meaning, so we repeated the test
