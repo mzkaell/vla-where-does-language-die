@@ -24,9 +24,15 @@ def _base(cw=1.0, cf=0.0, i=0):
 
 
 def test_delta_plus_failing_reconstructs_working():
+    # Seeded, and with a float32-appropriate tolerance. Previously this drew unseeded and
+    # compared at torch.allclose defaults, asserting that f + (w - f) equals w exactly.
+    # That identity holds in real arithmetic but not in float32, so the test failed on
+    # unlucky draws -- a non-deterministic test in a project whose whole argument rests on
+    # reproducibility. It surfaced when unrelated new tests shifted global RNG consumption.
+    torch.manual_seed(0)
     w, f = torch.randn(1, 5, 8), torch.randn(1, 5, 8)
     patched = dosed_patch([binding_delta(w, f)], alpha=1.0)(f, 0)
-    assert torch.allclose(patched, w)  # alpha=1 same-site == M2 (vlm sites only)
+    assert torch.allclose(patched, w, rtol=1e-5, atol=1e-6)
 
 
 def test_dosed_patch_refuses_to_recycle_deltas():
